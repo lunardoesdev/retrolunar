@@ -51,3 +51,9 @@ lua_dep = declare_dependency(
   compile_args : '-DLUA_USE_POSIX',
   dependencies : m_dep,
 )
+
+executable('retrolunar',
+  'src/main.c',
+  dependencies : lua_dep,
+  install : true,
+)
