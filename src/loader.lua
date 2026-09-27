@@ -336,9 +336,11 @@ do
       out[#out + 1] = '  OUT=$(mktemp -d "$NESTDIR/tmp/out-XXXXXX")\n'
       out[#out + 1] = '  trap \'rm -rf "$WORK" "$OUT"\' EXIT\n'
       out[#out + 1] = '  cd "$WORK"\n'
+      out[#out + 1] = '  PREFIX="$NESTDIR/' .. sys .. '"\n'
       out[#out + 1] = '  RECIPEDIR="$PACKAGEDIR/' .. name .. '"\n'
       out[#out + 1] = '  PACKAGEDIR="$PACKAGEDIR" NESTDIR="$NESTDIR"'
-        .. ' RECIPEDIR="$RECIPEDIR" OUT="$OUT" export PACKAGEDIR NESTDIR RECIPEDIR OUT\n'
+        .. ' RECIPEDIR="$RECIPEDIR" OUT="$OUT" PREFIX="$PREFIX"'
+        .. ' export PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX\n'
       local build = e.build
       if type(build) == 'string' then
         for raw in build:gmatch('[^\n]*\n?') do

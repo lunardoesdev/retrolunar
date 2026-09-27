@@ -1,6 +1,5 @@
 return system({
     env = {
-        PREFIX="$NESTDIR/clang-native",
         CC = "clang",
         CXX = "clang++",
         AR = "llvm-ar",
@@ -20,9 +19,9 @@ return system({
         PKG_CONFIG_LIBDIR = "$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig",
         PKG_CONFIG_PATH = "",
 
-        AUTOCONF_CONFIGURE_FLAGS = "--prefix=$PREFIX",
+        AUTOCONF_CONFIGURE_FLAGS = "--prefix=$OUT",
 
         CMAKE_PREFIX_PATH = "$PREFIX",
-        CMAKE_FLAGS = "-DCMAKE_INSTALL_PREFIX=$PREFIX"
+        CMAKE_FLAGS = "-DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
     }
 })
