@@ -32,8 +32,8 @@ do
     return t
   end
 
-  function package(t)
-    print('package(' .. dump(t) .. ')')
+  function recipe(t)
+    print('recipe(' .. dump(t) .. ')')
     return t
   end
 
