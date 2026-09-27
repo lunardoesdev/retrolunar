@@ -314,6 +314,19 @@ do
           sysref = '$PACKAGEDIR/' .. sf
         end
         out[#out + 1] = ' && [ ' .. stamp .. ' -nt ' .. sysref .. ' ]'
+        -- Companion files next to the system recipe (cmake toolchain,
+        -- meson crossfile): any change must invalidate the stamp.
+        local sysdir = e.system.dir
+        if type(sysdir) == 'string' and sysdir ~= '' then
+          local sd = sysdir:gsub('^%./', '')
+          local dirref
+          if sd:sub(1, 1) == '/' then dirref = sd
+          else
+            sd = sd:gsub('^packages/', '')
+            dirref = '$PACKAGEDIR/' .. sd
+          end
+          out[#out + 1] = ' && [ ' .. stamp .. ' -nt ' .. dirref .. ' ]'
+        end
       end
       out[#out + 1] = '; then\n'
       out[#out + 1] = '  echo "skip ' .. name .. '@' .. sys .. ' (fresh)"\n'
