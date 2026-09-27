@@ -365,13 +365,13 @@ do
       out[#out + 1] = '  PACKAGEDIR="$PACKAGEDIR" NESTDIR="$NESTDIR"'
         .. ' RECIPEDIR="$RECIPEDIR" OUT="$OUT" PREFIX="$PREFIX" SYSDIR="$SYSDIR"'
         .. ' export PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX SYSDIR\n'
-      -- preenv before env: NDK discovery defines TOOLCHAIN/SYSROOT/PATH
-      -- which env values ($SYSROOT, cargo $CC/$CFLAGS) reference.
-      -- postenv after env: sees toolchain vars (e.g. cargo CC_* exports).
-      local function emit_hook(src)
-        if type(src) ~= 'string' or src == '' then return end
-        -- hooks may contain heredocs: terminators must start at column 0.
-        for raw in src:gmatch('[^\n]*\n?') do
+      -- setup after dirs: the single shell fragment defining the whole
+      -- environment (plain VAR="..." + export lines, may use
+      -- $WORK/$OUT/$PREFIX/$SYSDIR/$RECIPEDIR and contain heredocs).
+      local setup = e.system and e.system.setup or nil
+      if type(setup) == 'string' and setup ~= '' then
+        -- setup may contain heredocs: terminators must start at column 0.
+        for raw in setup:gmatch('[^\n]*\n?') do
           local body = raw
           if body ~= '' then
             if body:sub(-1) ~= '\n' then body = body .. '\n' end
@@ -384,48 +384,6 @@ do
           end
         end
       end
-      emit_hook(e.system and e.system.preenv or nil)
-      -- env after setup; values expand immediately (double quotes) so
-      -- cmake receives literals, not nested $ refs. Toposorted so
-      -- AS="$CC" and CFLAGS="$SYSROOT..." come after their deps.
-      local env = e.system and e.system.env or nil
-      if type(env) == 'table' then
-        local names = {}
-        for k in pairs(env) do names[#names + 1] = k end
-        table.sort(names)
-        local ordered, remaining = {}, {}
-        for _, k in ipairs(names) do remaining[k] = true end
-        local progress = true
-        while progress and next(remaining) do
-          progress = false
-          for _, k in ipairs(names) do
-            if remaining[k] then
-              local v = tostring(env[k])
-              local ready = true
-              for other in pairs(remaining) do
-                if other ~= k and v:find('$' .. other, 1, true) then
-                  ready = false break
-                end
-              end
-              if ready then
-                ordered[#ordered + 1] = k
-                remaining[k] = nil
-                progress = true
-              end
-            end
-          end
-        end
-        for _, k in ipairs(names) do
-          if remaining[k] then ordered[#ordered + 1] = k end
-        end
-        for _, k in ipairs(ordered) do
-          local v = tostring(env[k])
-          v = v:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('`', '\\`')
-          out[#out + 1] = '  ' .. k .. '="' .. v .. '"\n'
-        end
-        out[#out + 1] = '  export ' .. table.concat(ordered, ' ') .. '\n'
-      end
-      emit_hook(e.system and e.system.postenv or nil)
       local build = e.build
       if type(build) == 'string' then
         -- Same heredoc rule as setup: bare EOF terminates at column 0.
@@ -442,16 +400,23 @@ do
           end
         end
       end
-      -- DESTDIR staging for real systems: builds install with
-      -- prefix=$PREFIX and DESTDIR=$OUT, so staged files land in
-      -- $OUT$PREFIX with final paths baked into .pc files.
-      -- `source` system has no PREFIX contract: plain $OUT merge.
+      -- Staged .pc files bake $OUT paths; $OUT is a per-block mktemp dir,
+      -- so rewrite textually to $PREFIX. Pure sh string ops, no sed.
+      out[#out + 1] = '  for _pc in "$OUT"/lib/pkgconfig/*.pc'
+        .. ' "$OUT"/share/pkgconfig/*.pc; do\n'
+      out[#out + 1] = '    [ -f "$_pc" ] || continue\n'
+      out[#out + 1] = '    while IFS= read -r _line || [ -n "$_line" ]; do\n'
+      out[#out + 1] = '      case "$_line" in\n'
+      out[#out + 1] = '        *"$OUT"*) printf "%s\\n" "$_line"'
+        .. ' | awk -v o="$OUT" -v p="$PREFIX"'
+        .. ' \'{ gsub(o, p); print }\'' .. ';;\n'
+      out[#out + 1] = '        *) printf "%s\\n" "$_line";;\n'
+      out[#out + 1] = '      esac\n'
+      out[#out + 1] = '    done < "$_pc" > "$_pc.fixed"'
+        .. ' && mv "$_pc.fixed" "$_pc"\n'
+      out[#out + 1] = '  done\n'
       out[#out + 1] = '  mkdir -p "$NESTDIR/' .. sys .. '"\n'
-      if sys == 'source' then
-        out[#out + 1] = '  cp -rf "$OUT"/. "$NESTDIR/' .. sys .. '/"\n'
-      else
-        out[#out + 1] = '  cp -rf "$OUT$PREFIX"/. "$NESTDIR/' .. sys .. '/"\n'
-      end
+      out[#out + 1] = '  cp -rf "$OUT"/. "$NESTDIR/' .. sys .. '/"\n'
       out[#out + 1] = '  touch ' .. stamp .. '\n'
       out[#out + 1] = '  rm -rf "$WORK" "$OUT"\n'
       out[#out + 1] = '  trap - EXIT\n'

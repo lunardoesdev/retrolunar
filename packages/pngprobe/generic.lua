@@ -31,7 +31,7 @@ return recipe({
           "$READELF" -d "target/$CARGO_BUILD_TARGET/release/pngprobe" >&2 || true
           exit 1
         fi
-        mkdir -p "$OUT$PREFIX/bin"
-        cp "target/$CARGO_BUILD_TARGET/release/pngprobe" "$OUT$PREFIX/bin/"
+        mkdir -p "$OUT/bin"
+        cp "target/$CARGO_BUILD_TARGET/release/pngprobe" "$OUT/bin/"
     ]]
 })

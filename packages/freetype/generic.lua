@@ -11,6 +11,6 @@ return recipe({
             -Dzlib=system -Dpng=enabled \
             -Dbrotli=disabled -Dbzip2=disabled -Dharfbuzz=disabled \
             -Dtests=disabled
-        DESTDIR="$OUT" ninja -C build install
+        ninja -C build install
     ]]
 })

@@ -25,6 +25,15 @@ else
       mkdir -p $OUT/zlib
       cp -r src/* $OUT/zlib/
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/source"
   cp -rf "$OUT"/. "$NESTDIR/source/"
   touch $NESTDIR/source/.retrolunar-zlib
@@ -62,42 +71,83 @@ else
       export PATH
       SYSROOT="$TOOLCHAIN/sysroot"
       export SYSROOT
+      CC="aarch64-linux-android21-clang"
+      export CC
+      CXX="aarch64-linux-android21-clang++"
+      export CXX
+      AR="llvm-ar"
+      export AR
+      RANLIB="llvm-ranlib"
+      export RANLIB
+      LD="ld.lld"
+      export LD
+      STRIP="llvm-strip"
+      export STRIP
+      OBJCOPY="llvm-objcopy"
+      export OBJCOPY
+      READELF="llvm-readelf"
+      export READELF
+      NM="llvm-nm"
+      export NM
+      OBJDUMP="llvm-objdump"
+      export OBJDUMP
+      CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CFLAGS
+      CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CXXFLAGS
+      LDFLAGS=""
+      export LDFLAGS
+      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
+      export PKG_CONFIG_LIBDIR
+      PKG_CONFIG_PATH=""
+      export PKG_CONFIG_PATH
+      AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$OUT"
+      export AUTOCONF_CONFIGURE_FLAGS
+      CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
+      export CMAKE_TOOLCHAIN_FILE
+      CMAKE_PREFIX_PATH="$PREFIX"
+      export CMAKE_PREFIX_PATH
+      CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
+      export CMAKE_FLAGS
+      MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_CROSS_FILE
+      MESON_FLAGS="--prefix=$OUT --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_FLAGS
+      CARGO_BUILD_TARGET="aarch64-linux-android"
+      export CARGO_BUILD_TARGET
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR
+      RUSTFLAGS="-L $PREFIX/lib"
+      export RUSTFLAGS
+      PKG_CONFIG_ALLOW_CROSS="1"
+      export PKG_CONFIG_ALLOW_CROSS
+      CC_aarch64_linux_android="$CC"
+      export CC_aarch64_linux_android
+      CFLAGS_aarch64_linux_android="$CFLAGS"
+      export CFLAGS_aarch64_linux_android
+      CXX_aarch64_linux_android="$CXX"
+      export CXX_aarch64_linux_android
+      CXXFLAGS_aarch64_linux_android="$CXXFLAGS"
+      export CXXFLAGS_aarch64_linux_android
   
-  AR="llvm-ar"
-  AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$PREFIX"
-  CARGO_BUILD_TARGET="aarch64-linux-android"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
-  CC="aarch64-linux-android21-clang"
-  CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX"
-  CMAKE_PREFIX_PATH="$PREFIX"
-  CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
-  CXX="aarch64-linux-android21-clang++"
-  LD="ld.lld"
-  LDFLAGS=""
-  MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
-  MESON_FLAGS="--prefix=$PREFIX --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
-  NM="llvm-nm"
-  OBJCOPY="llvm-objcopy"
-  OBJDUMP="llvm-objdump"
-  PKG_CONFIG_ALLOW_CROSS="1"
-  PKG_CONFIG_PATH=""
-  RANLIB="llvm-ranlib"
-  READELF="llvm-readelf"
-  RUSTFLAGS="-L $PREFIX/lib"
-  STRIP="llvm-strip"
-  SYSROOT="$TOOLCHAIN/sysroot"
-  CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
-  export AR AUTOCONF_CONFIGURE_FLAGS CARGO_BUILD_TARGET CARGO_TARGET_AARCH64_LINUX_ANDROID_AR CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER CC CMAKE_FLAGS CMAKE_PREFIX_PATH CMAKE_TOOLCHAIN_FILE CXX LD LDFLAGS MESON_CROSS_FILE MESON_FLAGS NM OBJCOPY OBJDUMP PKG_CONFIG_ALLOW_CROSS PKG_CONFIG_PATH RANLIB READELF RUSTFLAGS STRIP SYSROOT CFLAGS CXXFLAGS PKG_CONFIG_LIBDIR
       cp -r $NESTDIR/source/zlib/* .
-      cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX -DZLIB_BUILD_EXAMPLES=OFF
+      cmake -S . -B build $CMAKE_FLAGS -DZLIB_BUILD_EXAMPLES=OFF
       cmake --build build -j$(nproc 2>/dev/null || echo 4)
-      DESTDIR="$OUT" cmake --install build
+      cmake --install build
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/aarch64-android21"
-  cp -rf "$OUT$PREFIX"/. "$NESTDIR/aarch64-android21/"
+  cp -rf "$OUT"/. "$NESTDIR/aarch64-android21/"
   touch $NESTDIR/aarch64-android21/.retrolunar-zlib
   rm -rf "$WORK" "$OUT"
   trap - EXIT
@@ -124,6 +174,15 @@ else
       mkdir -p $OUT/libpng
       cp -r src/* $OUT/libpng/
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/source"
   cp -rf "$OUT"/. "$NESTDIR/source/"
   touch $NESTDIR/source/.retrolunar-libpng
@@ -161,44 +220,85 @@ else
       export PATH
       SYSROOT="$TOOLCHAIN/sysroot"
       export SYSROOT
+      CC="aarch64-linux-android21-clang"
+      export CC
+      CXX="aarch64-linux-android21-clang++"
+      export CXX
+      AR="llvm-ar"
+      export AR
+      RANLIB="llvm-ranlib"
+      export RANLIB
+      LD="ld.lld"
+      export LD
+      STRIP="llvm-strip"
+      export STRIP
+      OBJCOPY="llvm-objcopy"
+      export OBJCOPY
+      READELF="llvm-readelf"
+      export READELF
+      NM="llvm-nm"
+      export NM
+      OBJDUMP="llvm-objdump"
+      export OBJDUMP
+      CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CFLAGS
+      CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CXXFLAGS
+      LDFLAGS=""
+      export LDFLAGS
+      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
+      export PKG_CONFIG_LIBDIR
+      PKG_CONFIG_PATH=""
+      export PKG_CONFIG_PATH
+      AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$OUT"
+      export AUTOCONF_CONFIGURE_FLAGS
+      CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
+      export CMAKE_TOOLCHAIN_FILE
+      CMAKE_PREFIX_PATH="$PREFIX"
+      export CMAKE_PREFIX_PATH
+      CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
+      export CMAKE_FLAGS
+      MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_CROSS_FILE
+      MESON_FLAGS="--prefix=$OUT --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_FLAGS
+      CARGO_BUILD_TARGET="aarch64-linux-android"
+      export CARGO_BUILD_TARGET
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR
+      RUSTFLAGS="-L $PREFIX/lib"
+      export RUSTFLAGS
+      PKG_CONFIG_ALLOW_CROSS="1"
+      export PKG_CONFIG_ALLOW_CROSS
+      CC_aarch64_linux_android="$CC"
+      export CC_aarch64_linux_android
+      CFLAGS_aarch64_linux_android="$CFLAGS"
+      export CFLAGS_aarch64_linux_android
+      CXX_aarch64_linux_android="$CXX"
+      export CXX_aarch64_linux_android
+      CXXFLAGS_aarch64_linux_android="$CXXFLAGS"
+      export CXXFLAGS_aarch64_linux_android
   
-  AR="llvm-ar"
-  AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$PREFIX"
-  CARGO_BUILD_TARGET="aarch64-linux-android"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
-  CC="aarch64-linux-android21-clang"
-  CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX"
-  CMAKE_PREFIX_PATH="$PREFIX"
-  CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
-  CXX="aarch64-linux-android21-clang++"
-  LD="ld.lld"
-  LDFLAGS=""
-  MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
-  MESON_FLAGS="--prefix=$PREFIX --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
-  NM="llvm-nm"
-  OBJCOPY="llvm-objcopy"
-  OBJDUMP="llvm-objdump"
-  PKG_CONFIG_ALLOW_CROSS="1"
-  PKG_CONFIG_PATH=""
-  RANLIB="llvm-ranlib"
-  READELF="llvm-readelf"
-  RUSTFLAGS="-L $PREFIX/lib"
-  STRIP="llvm-strip"
-  SYSROOT="$TOOLCHAIN/sysroot"
-  CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
-  export AR AUTOCONF_CONFIGURE_FLAGS CARGO_BUILD_TARGET CARGO_TARGET_AARCH64_LINUX_ANDROID_AR CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER CC CMAKE_FLAGS CMAKE_PREFIX_PATH CMAKE_TOOLCHAIN_FILE CXX LD LDFLAGS MESON_CROSS_FILE MESON_FLAGS NM OBJCOPY OBJDUMP PKG_CONFIG_ALLOW_CROSS PKG_CONFIG_PATH RANLIB READELF RUSTFLAGS STRIP SYSROOT CFLAGS CXXFLAGS PKG_CONFIG_LIBDIR
       export CPPFLAGS="-I$PREFIX/include"
       export LDFLAGS="-L$PREFIX/lib -Wl,-rpath-link,$PREFIX/lib"
       cp -r $NESTDIR/source/libpng/* .
       ./configure $AUTOCONF_CONFIGURE_FLAGS --with-zlib-prefix="$PREFIX"
       make -j$(nproc 2>/dev/null || echo 4)
-      DESTDIR="$OUT" make install
+      make install
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/aarch64-android21"
-  cp -rf "$OUT$PREFIX"/. "$NESTDIR/aarch64-android21/"
+  cp -rf "$OUT"/. "$NESTDIR/aarch64-android21/"
   touch $NESTDIR/aarch64-android21/.retrolunar-libpng
   rm -rf "$WORK" "$OUT"
   trap - EXIT
@@ -225,6 +325,15 @@ else
       mkdir -p $OUT/freetype
       cp -r src/* $OUT/freetype/
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/source"
   cp -rf "$OUT"/. "$NESTDIR/source/"
   touch $NESTDIR/source/.retrolunar-freetype
@@ -262,35 +371,67 @@ else
       export PATH
       SYSROOT="$TOOLCHAIN/sysroot"
       export SYSROOT
+      CC="aarch64-linux-android21-clang"
+      export CC
+      CXX="aarch64-linux-android21-clang++"
+      export CXX
+      AR="llvm-ar"
+      export AR
+      RANLIB="llvm-ranlib"
+      export RANLIB
+      LD="ld.lld"
+      export LD
+      STRIP="llvm-strip"
+      export STRIP
+      OBJCOPY="llvm-objcopy"
+      export OBJCOPY
+      READELF="llvm-readelf"
+      export READELF
+      NM="llvm-nm"
+      export NM
+      OBJDUMP="llvm-objdump"
+      export OBJDUMP
+      CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CFLAGS
+      CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CXXFLAGS
+      LDFLAGS=""
+      export LDFLAGS
+      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
+      export PKG_CONFIG_LIBDIR
+      PKG_CONFIG_PATH=""
+      export PKG_CONFIG_PATH
+      AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$OUT"
+      export AUTOCONF_CONFIGURE_FLAGS
+      CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
+      export CMAKE_TOOLCHAIN_FILE
+      CMAKE_PREFIX_PATH="$PREFIX"
+      export CMAKE_PREFIX_PATH
+      CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
+      export CMAKE_FLAGS
+      MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_CROSS_FILE
+      MESON_FLAGS="--prefix=$OUT --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_FLAGS
+      CARGO_BUILD_TARGET="aarch64-linux-android"
+      export CARGO_BUILD_TARGET
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR
+      RUSTFLAGS="-L $PREFIX/lib"
+      export RUSTFLAGS
+      PKG_CONFIG_ALLOW_CROSS="1"
+      export PKG_CONFIG_ALLOW_CROSS
+      CC_aarch64_linux_android="$CC"
+      export CC_aarch64_linux_android
+      CFLAGS_aarch64_linux_android="$CFLAGS"
+      export CFLAGS_aarch64_linux_android
+      CXX_aarch64_linux_android="$CXX"
+      export CXX_aarch64_linux_android
+      CXXFLAGS_aarch64_linux_android="$CXXFLAGS"
+      export CXXFLAGS_aarch64_linux_android
   
-  AR="llvm-ar"
-  AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$PREFIX"
-  CARGO_BUILD_TARGET="aarch64-linux-android"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
-  CC="aarch64-linux-android21-clang"
-  CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX"
-  CMAKE_PREFIX_PATH="$PREFIX"
-  CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
-  CXX="aarch64-linux-android21-clang++"
-  LD="ld.lld"
-  LDFLAGS=""
-  MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
-  MESON_FLAGS="--prefix=$PREFIX --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
-  NM="llvm-nm"
-  OBJCOPY="llvm-objcopy"
-  OBJDUMP="llvm-objdump"
-  PKG_CONFIG_ALLOW_CROSS="1"
-  PKG_CONFIG_PATH=""
-  RANLIB="llvm-ranlib"
-  READELF="llvm-readelf"
-  RUSTFLAGS="-L $PREFIX/lib"
-  STRIP="llvm-strip"
-  SYSROOT="$TOOLCHAIN/sysroot"
-  CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
-  export AR AUTOCONF_CONFIGURE_FLAGS CARGO_BUILD_TARGET CARGO_TARGET_AARCH64_LINUX_ANDROID_AR CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER CC CMAKE_FLAGS CMAKE_PREFIX_PATH CMAKE_TOOLCHAIN_FILE CXX LD LDFLAGS MESON_CROSS_FILE MESON_FLAGS NM OBJCOPY OBJDUMP PKG_CONFIG_ALLOW_CROSS PKG_CONFIG_PATH RANLIB READELF RUSTFLAGS STRIP SYSROOT CFLAGS CXXFLAGS PKG_CONFIG_LIBDIR
       export CPPFLAGS="-I$PREFIX/include -I$PREFIX/include/libpng16"
       export CFLAGS="-O2 -fPIC -I$PREFIX/include -I$PREFIX/include/libpng16 -DANDROID"
       cp -r $NESTDIR/source/freetype/* .
@@ -298,10 +439,19 @@ else
           -Dzlib=system -Dpng=enabled \
           -Dbrotli=disabled -Dbzip2=disabled -Dharfbuzz=disabled \
           -Dtests=disabled
-      DESTDIR="$OUT" ninja -C build install
+      ninja -C build install
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/aarch64-android21"
-  cp -rf "$OUT$PREFIX"/. "$NESTDIR/aarch64-android21/"
+  cp -rf "$OUT"/. "$NESTDIR/aarch64-android21/"
   touch $NESTDIR/aarch64-android21/.retrolunar-freetype
   rm -rf "$WORK" "$OUT"
   trap - EXIT
@@ -337,35 +487,67 @@ else
       export PATH
       SYSROOT="$TOOLCHAIN/sysroot"
       export SYSROOT
+      CC="aarch64-linux-android21-clang"
+      export CC
+      CXX="aarch64-linux-android21-clang++"
+      export CXX
+      AR="llvm-ar"
+      export AR
+      RANLIB="llvm-ranlib"
+      export RANLIB
+      LD="ld.lld"
+      export LD
+      STRIP="llvm-strip"
+      export STRIP
+      OBJCOPY="llvm-objcopy"
+      export OBJCOPY
+      READELF="llvm-readelf"
+      export READELF
+      NM="llvm-nm"
+      export NM
+      OBJDUMP="llvm-objdump"
+      export OBJDUMP
+      CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CFLAGS
+      CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
+      export CXXFLAGS
+      LDFLAGS=""
+      export LDFLAGS
+      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
+      export PKG_CONFIG_LIBDIR
+      PKG_CONFIG_PATH=""
+      export PKG_CONFIG_PATH
+      AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$OUT"
+      export AUTOCONF_CONFIGURE_FLAGS
+      CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
+      export CMAKE_TOOLCHAIN_FILE
+      CMAKE_PREFIX_PATH="$PREFIX"
+      export CMAKE_PREFIX_PATH
+      CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
+      export CMAKE_FLAGS
+      MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_CROSS_FILE
+      MESON_FLAGS="--prefix=$OUT --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
+      export MESON_FLAGS
+      CARGO_BUILD_TARGET="aarch64-linux-android"
+      export CARGO_BUILD_TARGET
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER
+      CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
+      export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR
+      RUSTFLAGS="-L $PREFIX/lib"
+      export RUSTFLAGS
+      PKG_CONFIG_ALLOW_CROSS="1"
+      export PKG_CONFIG_ALLOW_CROSS
+      CC_aarch64_linux_android="$CC"
+      export CC_aarch64_linux_android
+      CFLAGS_aarch64_linux_android="$CFLAGS"
+      export CFLAGS_aarch64_linux_android
+      CXX_aarch64_linux_android="$CXX"
+      export CXX_aarch64_linux_android
+      CXXFLAGS_aarch64_linux_android="$CXXFLAGS"
+      export CXXFLAGS_aarch64_linux_android
   
-  AR="llvm-ar"
-  AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$PREFIX"
-  CARGO_BUILD_TARGET="aarch64-linux-android"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
-  CC="aarch64-linux-android21-clang"
-  CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX"
-  CMAKE_PREFIX_PATH="$PREFIX"
-  CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
-  CXX="aarch64-linux-android21-clang++"
-  LD="ld.lld"
-  LDFLAGS=""
-  MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
-  MESON_FLAGS="--prefix=$PREFIX --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
-  NM="llvm-nm"
-  OBJCOPY="llvm-objcopy"
-  OBJDUMP="llvm-objdump"
-  PKG_CONFIG_ALLOW_CROSS="1"
-  PKG_CONFIG_PATH=""
-  RANLIB="llvm-ranlib"
-  READELF="llvm-readelf"
-  RUSTFLAGS="-L $PREFIX/lib"
-  STRIP="llvm-strip"
-  SYSROOT="$TOOLCHAIN/sysroot"
-  CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-  PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
-  export AR AUTOCONF_CONFIGURE_FLAGS CARGO_BUILD_TARGET CARGO_TARGET_AARCH64_LINUX_ANDROID_AR CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER CC CMAKE_FLAGS CMAKE_PREFIX_PATH CMAKE_TOOLCHAIN_FILE CXX LD LDFLAGS MESON_CROSS_FILE MESON_FLAGS NM OBJCOPY OBJDUMP PKG_CONFIG_ALLOW_CROSS PKG_CONFIG_PATH RANLIB READELF RUSTFLAGS STRIP SYSROOT CFLAGS CXXFLAGS PKG_CONFIG_LIBDIR
       rm -f "$PREFIX/lib/libxcadd.a" "$PREFIX/lib/pkgconfig/xcadd.pc"
       rm -rf "$PREFIX/include/xcadd"
       mkdir -p src
@@ -392,11 +574,20 @@ EOF
         "$READELF" -d "target/$CARGO_BUILD_TARGET/release/pngprobe" >&2 || true
         exit 1
       fi
-      mkdir -p "$OUT$PREFIX/bin"
-      cp "target/$CARGO_BUILD_TARGET/release/pngprobe" "$OUT$PREFIX/bin/"
+      mkdir -p "$OUT/bin"
+      cp "target/$CARGO_BUILD_TARGET/release/pngprobe" "$OUT/bin/"
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/aarch64-android21"
-  cp -rf "$OUT$PREFIX"/. "$NESTDIR/aarch64-android21/"
+  cp -rf "$OUT"/. "$NESTDIR/aarch64-android21/"
   touch $NESTDIR/aarch64-android21/.retrolunar-pngprobe
   rm -rf "$WORK" "$OUT"
   trap - EXIT
