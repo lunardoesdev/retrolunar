@@ -27,12 +27,20 @@ do
     return '{ ' .. table.concat(parts, ', ') .. ' }'
   end
 
-  function system(t)
-    print('system(' .. dump(t) .. ')')
-    return t
+  local function dirname(p)
+    local d = p:match('^(.*)/[^/]+$')
+    if d == nil or d == '' then return '.' end
+    return d
   end
-
+  local file_stack = {}
+  local function current_file() return file_stack[#file_stack] end
   function recipe(t)
+    if type(t) ~= 'table' then error('recipe() needs a table', 2) end
+    local f = current_file()
+    if f ~= nil then
+      t.file = f
+      t.dir = dirname(f)
+    end
     print('recipe(' .. dump(t) .. ')')
     return t
   end
@@ -41,11 +49,6 @@ do
     if m == '.' or m == '..' then return true end
     if m:sub(1, 2) == './' then return true end
     return m:sub(1, 3) == '../'
-  end
-  local function dirname(p)
-    local d = p:match('^(.*)/[^/]+$')
-    if d == nil or d == '' then return '.' end
-    return d
   end
   local function exists(path)
     local f = io.open(path, 'r')
@@ -87,13 +90,14 @@ do
     end
     return d
   end
-  local function run_with_sys(sys, fn)
+  local function run_with_sys(sys, file, fn)
     sys_stack[#sys_stack + 1] = sys
-    local had, old = pcall(function() return _G.SYSTEM end)
-    local saved = had and old or nil
+    file_stack[#file_stack + 1] = file
+    local saved = _G.SYSTEM
     _G.SYSTEM = sys
     local ok, res = pcall(fn)
     if saved == nil then _G.SYSTEM = nil else _G.SYSTEM = saved end
+    file_stack[#file_stack] = nil
     sys_stack[#sys_stack] = nil
     if not ok then error(res, 0) end
     return res
@@ -116,7 +120,7 @@ do
       for _, r in ipairs(rs) do
         local specific = r .. '/packages/' .. pack .. '/' .. sys .. '.lua'
         if exists(specific) then
-          return run_with_sys(sys, function()
+          return run_with_sys(sys, specific, function()
             return load_cached(mod, specific, mod)
           end)
         end
@@ -124,7 +128,7 @@ do
       for _, r in ipairs(rs) do
         local generic = r .. '/packages/' .. pack .. '/generic.lua'
         if exists(generic) then
-          return run_with_sys(sys, function()
+          return run_with_sys(sys, generic, function()
             return load_cached(mod, generic, mod)
           end)
         end
@@ -139,7 +143,7 @@ do
       for _, r in ipairs(rs) do
         local specific = r .. '/packages/' .. mod .. '/' .. isys .. '.lua'
         if exists(specific) then
-          return run_with_sys(isys, function()
+          return run_with_sys(isys, specific, function()
             return load_cached(canon, specific, canon)
           end)
         end
@@ -147,7 +151,7 @@ do
       for _, r in ipairs(rs) do
         local generic = r .. '/packages/' .. mod .. '/generic.lua'
         if exists(generic) then
-          return run_with_sys(isys, function()
+          return run_with_sys(isys, generic, function()
             return load_cached(canon, generic, canon)
           end)
         end
@@ -179,7 +183,7 @@ do
         if _loaded[cand] ~= nil then return _loaded[cand] end
         local chunk, err = _loadfile(cand)
         if chunk then
-          return run_with_sys(rsys, function()
+          return run_with_sys(rsys, cand, function()
             local res = chunk(mod)
             if res == nil then res = true end
             _loaded[cand] = res
