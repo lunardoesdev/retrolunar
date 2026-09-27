@@ -69,9 +69,16 @@ do
     return { BASE, '.' }
   end
 
-  -- System + file stacks: top = module currently loading.
+  -- System + file + key stacks: top = module currently loading.
+  -- key_stack holds the canonical require key (pack@sys or resolved
+  -- relative path) so recipe() enqueues under the right identity.
   local sys_stack = {}
   local file_stack = {}
+  local key_stack = {}
+  -- Build queue: recipe() tables in first-execution order (leaves first,
+  -- since requires run before the recipe() call at file end).
+  local queue = {}
+  local queued = {}
   local function current_sys()
     if #sys_stack > 0 then return sys_stack[#sys_stack] end
     local d = _G.DEFAULT_SYSTEM
@@ -81,13 +88,15 @@ do
     return d
   end
   local function current_file() return file_stack[#file_stack] end
-  local function run_with_sys(sys, file, fn)
+  local function run_with_sys(sys, file, key, fn)
     sys_stack[#sys_stack + 1] = sys
     file_stack[#file_stack + 1] = file
+    key_stack[#key_stack + 1] = key
     local saved = _G.SYSTEM
     _G.SYSTEM = sys
     local ok, res = pcall(fn)
     if saved == nil then _G.SYSTEM = nil else _G.SYSTEM = saved end
+    key_stack[#key_stack] = nil
     file_stack[#file_stack] = nil
     sys_stack[#sys_stack] = nil
     if not ok then error(res, 0) end
@@ -130,15 +139,8 @@ do
     local sys = sys_stack[#sys_stack]
     if sys == nil then sys = current_sys() end
     t.sys = sys
-    -- Attach the real system table: the module sys@generic (e.g.
-    -- clang-native@generic). Load on demand; missing stays nil.
-    -- Guarded against re-entry: system() never calls recipe(), so loading
-    -- a system file from here cannot recurse.
     local sysmod = sys .. '@generic'
     local st = _loaded[sysmod]
-    -- Inside a system file load (a 'generic' frame anywhere on the stack)
-    -- skip the on-demand require: it would re-enter require() while the
-    -- system chunk runs. The package load's own attach below covers it.
     local in_system = false
     for i = 1, #sys_stack do
       if sys_stack[i] == 'generic' then in_system = true break end
@@ -147,6 +149,13 @@ do
       local ok, res = pcall(require, sysmod)
       if ok then st = res end
     end
+    if type(st) == 'table' then t.system = st end
+    -- Enqueue once per canonical key. Requires run before recipe(), so
+    -- deps land first and queue order is already topological.
+    local key = key_stack[#key_stack] or (sys .. '@' .. (f or '?'))
+    if queued[key] then error("recipe() duplicate entry for " .. key, 2) end
+    queued[key] = true
+    queue[#queue + 1] = t
     print('recipe(' .. dump(t) .. ')')
     return t
   end
@@ -169,7 +178,7 @@ do
       for _, r in ipairs(rs) do
         local specific = r .. '/packages/' .. pack .. '/' .. sys .. '.lua'
         if exists(specific) then
-          return run_with_sys(sys, specific, function()
+          return run_with_sys(sys, specific, mod, function()
             return load_cached(mod, specific, mod)
           end)
         end
@@ -177,7 +186,7 @@ do
       for _, r in ipairs(rs) do
         local generic = r .. '/packages/' .. pack .. '/generic.lua'
         if exists(generic) then
-          return run_with_sys(sys, generic, function()
+          return run_with_sys(sys, generic, mod, function()
             return load_cached(mod, generic, mod)
           end)
         end
@@ -192,7 +201,7 @@ do
       for _, r in ipairs(rs) do
         local specific = r .. '/packages/' .. mod .. '/' .. isys .. '.lua'
         if exists(specific) then
-          return run_with_sys(isys, specific, function()
+          return run_with_sys(isys, specific, canon, function()
             return load_cached(canon, specific, canon)
           end)
         end
@@ -200,7 +209,7 @@ do
       for _, r in ipairs(rs) do
         local generic = r .. '/packages/' .. mod .. '/generic.lua'
         if exists(generic) then
-          return run_with_sys(isys, generic, function()
+          return run_with_sys(isys, generic, canon, function()
             return load_cached(canon, generic, canon)
           end)
         end
@@ -232,7 +241,7 @@ do
         if _loaded[cand] ~= nil then return _loaded[cand] end
         local chunk, err = _loadfile(cand)
         if chunk then
-          return run_with_sys(rsys, cand, function()
+          return run_with_sys(rsys, cand, cand, function()
             local res = chunk(mod)
             if res == nil then res = true end
             _loaded[cand] = res
@@ -246,4 +255,9 @@ do
     error("module '" .. mod .. "' not found", 2)
   end
   function require_system() return current_sys() end
+  function require_queue()
+    local snap = {}
+    for i, t in ipairs(queue) do snap[i] = t end
+    return snap
+  end
 end
