@@ -78,6 +78,26 @@ do
     if BASE == '.' then return { '.' } end
     return { BASE, '.' }
   end
+  local sys_stack = {}
+  local function current_sys()
+    if #sys_stack > 0 then return sys_stack[#sys_stack] end
+    local d = _G.DEFAULT_SYSTEM
+    if type(d) ~= 'string' or d == '' then
+      error('retrolunar: DEFAULT_SYSTEM not set', 3)
+    end
+    return d
+  end
+  local function run_with_sys(sys, fn)
+    sys_stack[#sys_stack + 1] = sys
+    local had, old = pcall(function() return _G.SYSTEM end)
+    local saved = had and old or nil
+    _G.SYSTEM = sys
+    local ok, res = pcall(fn)
+    if saved == nil then _G.SYSTEM = nil else _G.SYSTEM = saved end
+    sys_stack[#sys_stack] = nil
+    if not ok then error(res, 0) end
+    return res
+  end
   local function load_cached(key, path, mod)
     if _loaded[key] ~= nil then return _loaded[key] end
     local chunk, err = _loadfile(path)
@@ -96,37 +116,75 @@ do
       for _, r in ipairs(rs) do
         local specific = r .. '/packages/' .. pack .. '/' .. sys .. '.lua'
         if exists(specific) then
-          return load_cached(mod, specific, mod)
+          return run_with_sys(sys, function()
+            return load_cached(mod, specific, mod)
+          end)
         end
       end
       for _, r in ipairs(rs) do
         local generic = r .. '/packages/' .. pack .. '/generic.lua'
         if exists(generic) then
-          return load_cached(mod, generic, mod)
+          return run_with_sys(sys, function()
+            return load_cached(mod, generic, mod)
+          end)
         end
       end
       error("module '" .. mod .. "' not found", 2)
+    end
+    if mod:match('^[^@%.%/]+$') then
+      local isys = current_sys()
+      local canon = mod .. '@' .. isys
+      if _loaded[canon] ~= nil then return _loaded[canon] end
+      local rs = roots()
+      for _, r in ipairs(rs) do
+        local specific = r .. '/packages/' .. mod .. '/' .. isys .. '.lua'
+        if exists(specific) then
+          return run_with_sys(isys, function()
+            return load_cached(canon, specific, canon)
+          end)
+        end
+      end
+      for _, r in ipairs(rs) do
+        local generic = r .. '/packages/' .. mod .. '/generic.lua'
+        if exists(generic) then
+          return run_with_sys(isys, function()
+            return load_cached(canon, generic, canon)
+          end)
+        end
+      end
+      -- No package file: fall through (stdlib like string, io).
     end
     if not is_rel(mod) then
       return _require(mod, ...)
     end
     local dirs = {}
-    local info = _getinfo(2, 'S')
-    local src = info and info.source or nil
-    if type(src) == 'string' and src:sub(1, 1) == '@' then
-      dirs[#dirs + 1] = dirname(src:sub(2))
+    local lvl = 2
+    while true do
+      local info = _getinfo(lvl, 'Sf')
+      if not info then break end
+      if info.func ~= require then
+        local src = info.source
+        if type(src) == 'string' and src:sub(1, 1) == '@' then
+          dirs[#dirs + 1] = dirname(src:sub(2))
+        end
+        break
+      end
+      lvl = lvl + 1
     end
     dirs[#dirs + 1] = BASE
+    local rsys = current_sys()
     for _, d in ipairs(dirs) do
       local p = resolve(d, mod)
       for _, cand in ipairs({ p .. '.lua', p .. '/init.lua' }) do
         if _loaded[cand] ~= nil then return _loaded[cand] end
         local chunk, err = _loadfile(cand)
         if chunk then
-          local res = chunk(mod)
-          if res == nil then res = true end
-          _loaded[cand] = res
-          return res
+          return run_with_sys(rsys, function()
+            local res = chunk(mod)
+            if res == nil then res = true end
+            _loaded[cand] = res
+            return res
+          end)
         end
         local f = io.open(cand, 'r')
         if f then f:close() error(err, 2) end
@@ -134,4 +192,5 @@ do
     end
     error("module '" .. mod .. "' not found", 2)
   end
+  function require_system() return current_sys() end
 end

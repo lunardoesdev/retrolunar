@@ -6,6 +6,10 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+#ifndef RETROLUNAR_DEFAULT_SYSTEM
+#define RETROLUNAR_DEFAULT_SYSTEM "clang-native"
+#endif
+
 extern const char *loader_lua;
 
 static int run_chunk(lua_State *L, int status) {
@@ -45,6 +49,8 @@ int main(int argc, char **argv) {
     return 1;
   }
   luaL_openlibs(L);
+  lua_pushstring(L, RETROLUNAR_DEFAULT_SYSTEM);
+  lua_setglobal(L, "DEFAULT_SYSTEM");
   if (run_chunk(L, luaL_loadstring(L, loader_lua)) != LUA_OK) {
     lua_close(L);
     return 1;
