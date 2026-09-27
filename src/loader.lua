@@ -94,6 +94,22 @@ do
     return res
   end
 
+  -- System to inherit for bare/relative requires: inside a system file
+  -- (loaded as <sys>@generic, stack top "generic") there is no parent
+  -- package system, so use the C predefined DEFAULT_SYSTEM. Elsewhere
+  -- inherit the requiring module's system. Explicit pack@sys unaffected.
+  local function inherit_sys()
+    for i = 1, #sys_stack do
+      if sys_stack[i] == 'generic' then
+        local d = _G.DEFAULT_SYSTEM
+        if type(d) ~= 'string' or d == '' then
+          error('retrolunar: DEFAULT_SYSTEM not set', 3)
+        end
+        return d
+      end
+    end
+    return current_sys()
+  end
   function system(t)
     if type(t) ~= 'table' then error('system() needs a table', 2) end
     local f = current_file()
@@ -120,11 +136,17 @@ do
     -- a system file from here cannot recurse.
     local sysmod = sys .. '@generic'
     local st = _loaded[sysmod]
-    if st == nil and sys ~= 'generic' then
+    -- Inside a system file load (a 'generic' frame anywhere on the stack)
+    -- skip the on-demand require: it would re-enter require() while the
+    -- system chunk runs. The package load's own attach below covers it.
+    local in_system = false
+    for i = 1, #sys_stack do
+      if sys_stack[i] == 'generic' then in_system = true break end
+    end
+    if st == nil and sys ~= 'generic' and not in_system then
       local ok, res = pcall(require, sysmod)
       if ok then st = res end
     end
-    if type(st) == 'table' then t.system = st end
     print('recipe(' .. dump(t) .. ')')
     return t
   end
@@ -163,7 +185,7 @@ do
       error("module '" .. mod .. "' not found", 2)
     end
     if mod:match('^[^@%.%/]+$') then
-      local isys = current_sys()
+      local isys = inherit_sys()
       local canon = mod .. '@' .. isys
       if _loaded[canon] ~= nil then return _loaded[canon] end
       local rs = roots()
@@ -203,7 +225,7 @@ do
       lvl = lvl + 1
     end
     dirs[#dirs + 1] = BASE
-    local rsys = current_sys()
+    local rsys = inherit_sys()
     for _, d in ipairs(dirs) do
       local p = resolve(d, mod)
       for _, cand in ipairs({ p .. '.lua', p .. '/init.lua' }) do
