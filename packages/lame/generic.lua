@@ -7,5 +7,6 @@ return recipe({
         touch aclocal.m4 configure config.h.in
         make -j$(nproc 2>/dev/null || echo 4)
         make -C libmp3lame install
+        make -C include install
     ]]
 })
