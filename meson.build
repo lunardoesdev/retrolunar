@@ -52,8 +52,15 @@ lua_dep = declare_dependency(
   dependencies : m_dep,
 )
 
+loader_c = custom_target('loader_lua',
+  input : 'src/loader.lua',
+  output : 'loader_lua.c',
+  depend_files : 'src/embed.py',
+  command : [find_program('python3'), meson.project_source_root() / 'src' / 'embed.py', '@INPUT@', '@OUTPUT@'],
+)
+
 executable('retrolunar',
-  'src/main.c',
+  ['src/main.c', loader_c],
   dependencies : lua_dep,
   install : true,
 )

@@ -6,6 +6,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+extern const char *loader_lua;
+
 static int run_chunk(lua_State *L, int status) {
   if (status == LUA_OK)
     status = lua_pcall(L, 0, LUA_MULTRET, 0);
@@ -43,6 +45,10 @@ int main(int argc, char **argv) {
     return 1;
   }
   luaL_openlibs(L);
+  if (run_chunk(L, luaL_loadstring(L, loader_lua)) != LUA_OK) {
+    lua_close(L);
+    return 1;
+  }
 
   int status;
   if (argc < 2)
