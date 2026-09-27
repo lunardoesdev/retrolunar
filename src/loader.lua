@@ -32,19 +32,6 @@ do
     if d == nil or d == '' then return '.' end
     return d
   end
-  local file_stack = {}
-  local function current_file() return file_stack[#file_stack] end
-  function recipe(t)
-    if type(t) ~= 'table' then error('recipe() needs a table', 2) end
-    local f = current_file()
-    if f ~= nil then
-      t.file = f
-      t.dir = dirname(f)
-    end
-    print('recipe(' .. dump(t) .. ')')
-    return t
-  end
-
   local function is_rel(m)
     if m == '.' or m == '..' then return true end
     if m:sub(1, 2) == './' then return true end
@@ -81,7 +68,10 @@ do
     if BASE == '.' then return { '.' } end
     return { BASE, '.' }
   end
+
+  -- System + file stacks: top = module currently loading.
   local sys_stack = {}
+  local file_stack = {}
   local function current_sys()
     if #sys_stack > 0 then return sys_stack[#sys_stack] end
     local d = _G.DEFAULT_SYSTEM
@@ -90,6 +80,7 @@ do
     end
     return d
   end
+  local function current_file() return file_stack[#file_stack] end
   local function run_with_sys(sys, file, fn)
     sys_stack[#sys_stack + 1] = sys
     file_stack[#file_stack + 1] = file
@@ -102,6 +93,42 @@ do
     if not ok then error(res, 0) end
     return res
   end
+
+  function system(t)
+    if type(t) ~= 'table' then error('system() needs a table', 2) end
+    local f = current_file()
+    if f ~= nil then
+      t.file = f
+      t.dir = dirname(f)
+    end
+    print('system(' .. dump(t) .. ')')
+    return t
+  end
+  function recipe(t)
+    if type(t) ~= 'table' then error('recipe() needs a table', 2) end
+    local f = current_file()
+    if f ~= nil then
+      t.file = f
+      t.dir = dirname(f)
+    end
+    local sys = sys_stack[#sys_stack]
+    if sys == nil then sys = current_sys() end
+    t.sys = sys
+    -- Attach the real system table: the module sys@generic (e.g.
+    -- clang-native@generic). Load on demand; missing stays nil.
+    -- Guarded against re-entry: system() never calls recipe(), so loading
+    -- a system file from here cannot recurse.
+    local sysmod = sys .. '@generic'
+    local st = _loaded[sysmod]
+    if st == nil and sys ~= 'generic' then
+      local ok, res = pcall(require, sysmod)
+      if ok then st = res end
+    end
+    if type(st) == 'table' then t.system = st end
+    print('recipe(' .. dump(t) .. ')')
+    return t
+  end
+
   local function load_cached(key, path, mod)
     if _loaded[key] ~= nil then return _loaded[key] end
     local chunk, err = _loadfile(path)
