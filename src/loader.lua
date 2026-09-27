@@ -318,6 +318,26 @@ do
       out[#out + 1] = '; then\n'
       out[#out + 1] = '  echo "skip ' .. name .. '@' .. sys .. ' (fresh)"\n'
       out[#out + 1] = 'else\n'
+      local setup = e.system and e.system.setup or nil
+      if type(setup) == 'string' and setup ~= '' then
+        -- setup may contain heredocs: terminators must start at column 0,
+        -- so emit lines verbatim (no two-space indent).
+        for raw in setup:gmatch('[^\n]*\n?') do
+          local body = raw
+          if body ~= '' then
+            if body:sub(-1) ~= '\n' then body = body .. '\n' end
+            -- Heredoc terminators must start at column 0: strip all
+            -- leading whitespace from a bare EOF line, one indent
+            -- level (two spaces) from everything else.
+            if body:match('^%s*EOF%s*$') then
+              body = 'EOF\n'
+            else
+              body = body:gsub('^  ', '', 1)
+            end
+            out[#out + 1] = body
+          end
+        end
+      end
       local env = e.system and e.system.env or nil
       if type(env) == 'table' then
         local names = {}
