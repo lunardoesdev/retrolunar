@@ -18,6 +18,15 @@ else
       mkdir -p $OUT/hello
       cp -rf $RECIPEDIR/main.c $OUT/hello
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/source"
   cp -rf "$OUT"/. "$NESTDIR/source/"
   touch $NESTDIR/source/.retrolunar-hello
@@ -36,49 +45,55 @@ else
   RECIPEDIR="$PACKAGEDIR/hello"
   SYSDIR="$PACKAGEDIR/clang-native"
   PACKAGEDIR="$PACKAGEDIR" NESTDIR="$NESTDIR" RECIPEDIR="$RECIPEDIR" OUT="$OUT" PREFIX="$PREFIX" SYSDIR="$SYSDIR" export PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX SYSDIR
+      # --- toolchain: local clang + llvm binutils ---
       CC="clang"
-      export CC
       CXX="clang++"
-      export CXX
       AR="llvm-ar"
-      export AR
       RANLIB="llvm-ranlib"
-      export RANLIB
       LD="ld.lld"
-      export LD
       AS="$CC"
-      export AS
       STRIP="llvm-strip"
-      export STRIP
       OBJCOPY="llvm-objcopy"
-      export OBJCOPY
       READELF="llvm-readelf"
-      export READELF
       OBJDUMP="llvm-objdump"
-      export OBJDUMP
+      export CC CXX AR RANLIB LD AS STRIP OBJCOPY READELF OBJDUMP
+
+      # --- search paths: headers, libraries, pkg-config ---
+      # $PREFIX points at this system's nest dir, where deps landed.
       CPPFLAGS="-I$PREFIX/include"
-      export CPPFLAGS
       CFLAGS="-O2 -fPIC"
-      export CFLAGS
       CXXFLAGS="-O2 -fPIC"
-      export CXXFLAGS
-      LDFLAGS="-L$PREFIX/lib  -Wl,-rpath-link,$PREFIX/lib -Wl,--undefined-version"
-      export LDFLAGS
-      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
-      export PKG_CONFIG_LIBDIR
+      LDFLAGS="-L$PREFIX/lib"
+      LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
+      LDFLAGS="$LDFLAGS -Wl,--undefined-version"
+      export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+      # Ignore host .pc files: only ours count.
+      PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
+      PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR:$PREFIX/share/pkgconfig"
       PKG_CONFIG_PATH=""
-      export PKG_CONFIG_PATH
+      export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
+
+      # --- build-system defaults: install into $OUT ---
       AUTOCONF_CONFIGURE_FLAGS="--prefix=$OUT"
       export AUTOCONF_CONFIGURE_FLAGS
       CMAKE_PREFIX_PATH="$PREFIX"
-      export CMAKE_PREFIX_PATH
-      CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
-      export CMAKE_FLAGS
+      CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT"
+      CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
+      export CMAKE_PREFIX_PATH CMAKE_FLAGS
   
       cp -rf $NESTDIR/source/hello/* .
       mkdir -p $OUT/bin
       $CC $CFLAGS main.c -o $OUT/bin/hello
   
+  for _pc in "$OUT"/lib/pkgconfig/*.pc "$OUT"/share/pkgconfig/*.pc; do
+    [ -f "$_pc" ] || continue
+    while IFS= read -r _line || [ -n "$_line" ]; do
+      case "$_line" in
+        *"$OUT"*) printf "%s\n" "$_line" | awk -v o="$OUT" -v p="$PREFIX" '{ gsub(o, p); print }';;
+        *) printf "%s\n" "$_line";;
+      esac
+    done < "$_pc" > "$_pc.fixed" && mv "$_pc.fixed" "$_pc"
+  done
   mkdir -p "$NESTDIR/clang-native"
   cp -rf "$OUT"/. "$NESTDIR/clang-native/"
   touch $NESTDIR/clang-native/.retrolunar-hello

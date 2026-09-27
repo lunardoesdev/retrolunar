@@ -1,12 +1,12 @@
 -- aarch64-linux-android21: NDK cross toolchain (from env.sh article).
--- PREFIX/OUT contract: PREFIX is the search path (nest prefix),
--- OUT is the per-package stage dir. Install flags point at $OUT;
--- search flags at $PREFIX. setup locates
--- the NDK, puts its wrappers on PATH, then exports the toolchain
--- (plain names, found via PATH); cmake/meson files live next to this
--- recipe and are referenced via $SYSDIR.
+-- Installs go to $OUT (per-package stage dir, merged into
+-- $NESTDIR/<sys> on success); $PREFIX is the search path where earlier
+-- packages landed. cmake/meson files live next to this recipe and are
+-- referenced via $SYSDIR. Plain VAR=value + grouped `export` lines.
 return system({
     setup = [[
+        # --- NDK discovery: newest version under $ANDROID_HOME/ndk ---
+        # Shell glob, no ls: aliases like eza would mangle ls output.
         : "${ANDROID_HOME:?set ANDROID_HOME to an Android SDK with an NDK}"
         _ndk_ver="$(for _ndk_cand in "$ANDROID_HOME/ndk"/*; do
           [ -d "$_ndk_cand" ] || continue
@@ -26,65 +26,72 @@ return system({
         export PATH
         SYSROOT="$TOOLCHAIN/sysroot"
         export SYSROOT
+
+        # --- toolchain: NDK clang wrappers + llvm binutils ---
+        # Wrappers already encode the API level (21).
         CC="aarch64-linux-android21-clang"
-        export CC
         CXX="aarch64-linux-android21-clang++"
-        export CXX
         AR="llvm-ar"
-        export AR
         RANLIB="llvm-ranlib"
-        export RANLIB
         LD="ld.lld"
-        export LD
         STRIP="llvm-strip"
-        export STRIP
         OBJCOPY="llvm-objcopy"
-        export OBJCOPY
         READELF="llvm-readelf"
-        export READELF
         NM="llvm-nm"
-        export NM
         OBJDUMP="llvm-objdump"
-        export OBJDUMP
-        CFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-        export CFLAGS
-        CXXFLAGS="-O2 -fPIC -I$PREFIX/include -DANDROID -isystem $SYSROOT/usr/include"
-        export CXXFLAGS
+        export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
+
+        # --- search paths: our prefix first, NDK sysroot second ---
+        # No bare -I/-L here: ./configure probes would pick the NDK's
+        # own ancient zlib headers without the explicit $PREFIX first.
+        CFLAGS="-O2 -fPIC"
+        CFLAGS="$CFLAGS -I$PREFIX/include"
+        CFLAGS="$CFLAGS -DANDROID -isystem $SYSROOT/usr/include"
+        CXXFLAGS="$CFLAGS"
+        export CFLAGS CXXFLAGS
+        # Kept empty on purpose: rust links via RUSTFLAGS below, and a
+        # global -L would leak host-style rpath flags into cargo.
         LDFLAGS=""
         export LDFLAGS
-        PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig:$SYSROOT/usr/lib/pkgconfig:$SYSROOT/usr/share/pkgconfig"
-        export PKG_CONFIG_LIBDIR
+        # Look up .pc files in our prefix, then the NDK sysroot...
+        PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
+        PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR:$PREFIX/share/pkgconfig"
+        PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR:$SYSROOT/usr/lib/pkgconfig"
+        PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR:$SYSROOT/usr/share/pkgconfig"
+        # ...and ignore every host .pc file outside those dirs.
         PKG_CONFIG_PATH=""
-        export PKG_CONFIG_PATH
-        AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --prefix=$OUT"
+        export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
+
+        # --- build-system defaults: install into $OUT, find in $PREFIX ---
+        AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android"
+        AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
         CMAKE_TOOLCHAIN_FILE="$SYSDIR/aarch64-linux-android21-toolchain.cmake"
-        export CMAKE_TOOLCHAIN_FILE
         CMAKE_PREFIX_PATH="$PREFIX"
-        export CMAKE_PREFIX_PATH
-        CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$SYSDIR/aarch64-linux-android21-toolchain.cmake -DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
-        export CMAKE_FLAGS
+        CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
+        export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
         MESON_CROSS_FILE="$SYSDIR/crossfile-aarch64-android21.ini"
-        export MESON_CROSS_FILE
-        MESON_FLAGS="--prefix=$OUT --cross-file $SYSDIR/crossfile-aarch64-android21.ini"
-        export MESON_FLAGS
+        MESON_FLAGS="--prefix=$OUT"
+        MESON_FLAGS="$MESON_FLAGS --cross-file $MESON_CROSS_FILE"
+        export MESON_CROSS_FILE MESON_FLAGS
+
+        # --- rust: target, linker, link path, cross pkg-config ---
+        # cc-crate Vars mirror $CC/$CFLAGS for build scripts.
         CARGO_BUILD_TARGET="aarch64-linux-android"
-        export CARGO_BUILD_TARGET
-        CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang"
-        export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER
-        CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="llvm-ar"
-        export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR
+        CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC"
+        CARGO_TARGET_AARCH64_LINUX_ANDROID_AR="$AR"
         RUSTFLAGS="-L $PREFIX/lib"
-        export RUSTFLAGS
         PKG_CONFIG_ALLOW_CROSS="1"
-        export PKG_CONFIG_ALLOW_CROSS
         CC_aarch64_linux_android="$CC"
-        export CC_aarch64_linux_android
         CFLAGS_aarch64_linux_android="$CFLAGS"
-        export CFLAGS_aarch64_linux_android
         CXX_aarch64_linux_android="$CXX"
-        export CXX_aarch64_linux_android
         CXXFLAGS_aarch64_linux_android="$CXXFLAGS"
-        export CXXFLAGS_aarch64_linux_android
+        export CARGO_BUILD_TARGET CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER
+        export CARGO_TARGET_AARCH64_LINUX_ANDROID_AR RUSTFLAGS
+        export PKG_CONFIG_ALLOW_CROSS
+        export CC_aarch64_linux_android CFLAGS_aarch64_linux_android
+        export CXX_aarch64_linux_android CXXFLAGS_aarch64_linux_android
     ]],
 })

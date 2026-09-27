@@ -1,42 +1,43 @@
+-- host-linux via local clang. Installs go to $OUT (per-package stage
+-- dir, merged into $NESTDIR/<sys> on success); $PREFIX is the search
+-- path where earlier packages landed. Plain VAR=value + `export VAR`
+-- lines so the generated script stays readable without emitter magic.
 return system({
     setup = [[
+        # --- toolchain: local clang + llvm binutils ---
         CC="clang"
-        export CC
         CXX="clang++"
-        export CXX
         AR="llvm-ar"
-        export AR
         RANLIB="llvm-ranlib"
-        export RANLIB
         LD="ld.lld"
-        export LD
         AS="$CC"
-        export AS
         STRIP="llvm-strip"
-        export STRIP
         OBJCOPY="llvm-objcopy"
-        export OBJCOPY
         READELF="llvm-readelf"
-        export READELF
         OBJDUMP="llvm-objdump"
-        export OBJDUMP
+        export CC CXX AR RANLIB LD AS STRIP OBJCOPY READELF OBJDUMP
+
+        # --- search paths: headers, libraries, pkg-config ---
+        # $PREFIX points at this system's nest dir, where deps landed.
         CPPFLAGS="-I$PREFIX/include"
-        export CPPFLAGS
         CFLAGS="-O2 -fPIC"
-        export CFLAGS
         CXXFLAGS="-O2 -fPIC"
-        export CXXFLAGS
-        LDFLAGS="-L$PREFIX/lib  -Wl,-rpath-link,$PREFIX/lib -Wl,--undefined-version"
-        export LDFLAGS
-        PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
-        export PKG_CONFIG_LIBDIR
+        LDFLAGS="-L$PREFIX/lib"
+        LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
+        LDFLAGS="$LDFLAGS -Wl,--undefined-version"
+        export CPPFLAGS CFLAGS CXXFLAGS LDFLAGS
+        # Ignore host .pc files: only ours count.
+        PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
+        PKG_CONFIG_LIBDIR="$PKG_CONFIG_LIBDIR:$PREFIX/share/pkgconfig"
         PKG_CONFIG_PATH=""
-        export PKG_CONFIG_PATH
+        export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
+
+        # --- build-system defaults: install into $OUT ---
         AUTOCONF_CONFIGURE_FLAGS="--prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
         CMAKE_PREFIX_PATH="$PREFIX"
-        export CMAKE_PREFIX_PATH
-        CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
-        export CMAKE_FLAGS
+        CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT"
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
+        export CMAKE_PREFIX_PATH CMAKE_FLAGS
     ]],
 })
