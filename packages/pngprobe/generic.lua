@@ -25,13 +25,15 @@ return recipe({
         }
         EOF
         PNG_CONFIG="false" cargo build --release --target "$CARGO_BUILD_TARGET"
-        if ! "$READELF" -d "target/$CARGO_BUILD_TARGET/release/pngprobe" | grep -q "libpng16"; then
+        _bin="target/$CARGO_BUILD_TARGET/release/pngprobe"
+        [ -f "$_bin" ] || _bin="$_bin.exe"
+        if ! "$OBJDUMP" -p "$_bin" | grep -qi "libpng16"; then
           echo "error: pngprobe did not link libpng16 from \$PREFIX" >&2
-          echo "--- readelf dump: ---" >&2
-          "$READELF" -d "target/$CARGO_BUILD_TARGET/release/pngprobe" >&2 || true
+          echo "--- objdump dump: ---" >&2
+          "$OBJDUMP" -p "$_bin" >&2 || true
           exit 1
         fi
         mkdir -p "$OUT/bin"
-        cp "target/$CARGO_BUILD_TARGET/release/pngprobe" "$OUT/bin/"
+        cp "$_bin" "$OUT/bin/"
     ]]
 })
