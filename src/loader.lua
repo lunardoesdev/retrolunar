@@ -64,9 +64,15 @@ do
     if out == '' then out = '.' end
     return out
   end
+  -- Packages dir is fixed at load time (loader runs once at startup),
+  -- from install's boot global, else the env, else BASE.
+  local _pd = _G.RETROLUNAR_PKGS_BOOT or os.getenv('RETROLUNAR_PACKAGES')
+  local PKGDIR = (type(_pd) == 'string' and _pd ~= '') and _pd or BASE
+  _G.RETROLUNAR_PKGS_BOOT = PKGDIR
   local function roots()
-    if BASE == '.' then return { '.' } end
-    return { BASE, '.' }
+    if PKGDIR == '.' and BASE == '.' then return { '.' } end
+    if PKGDIR == BASE then return { BASE, '.' } end
+    return { PKGDIR, BASE, '.' }
   end
 
   -- System + file + key stacks: top = module currently loading.
@@ -126,7 +132,6 @@ do
       t.file = f
       t.dir = dirname(f)
     end
-    print('system(' .. dump(t) .. ')')
     return t
   end
   function recipe(t)
@@ -153,10 +158,13 @@ do
     -- Enqueue once per canonical key. Requires run before recipe(), so
     -- deps land first and queue order is already topological.
     local key = key_stack[#key_stack] or (sys .. '@' .. (f or '?'))
+    local keypack = key:match('^([^@]+)@')
+    if t.name == nil and keypack ~= nil and not keypack:find('/') then
+      t.name = keypack
+    end
     if queued[key] then error("recipe() duplicate entry for " .. key, 2) end
     queued[key] = true
     queue[#queue + 1] = t
-    print('recipe(' .. dump(t) .. ')')
     return t
   end
 
@@ -176,7 +184,7 @@ do
       if _loaded[mod] ~= nil then return _loaded[mod] end
       local rs = roots()
       for _, r in ipairs(rs) do
-        local specific = r .. '/packages/' .. pack .. '/' .. sys .. '.lua'
+        local specific = r .. '/' .. pack .. '/' .. sys .. '.lua'
         if exists(specific) then
           return run_with_sys(sys, specific, mod, function()
             return load_cached(mod, specific, mod)
@@ -184,7 +192,7 @@ do
         end
       end
       for _, r in ipairs(rs) do
-        local generic = r .. '/packages/' .. pack .. '/generic.lua'
+        local generic = r .. '/' .. pack .. '/generic.lua'
         if exists(generic) then
           return run_with_sys(sys, generic, mod, function()
             return load_cached(mod, generic, mod)
@@ -199,7 +207,7 @@ do
       if _loaded[canon] ~= nil then return _loaded[canon] end
       local rs = roots()
       for _, r in ipairs(rs) do
-        local specific = r .. '/packages/' .. mod .. '/' .. isys .. '.lua'
+        local specific = r .. '/' .. mod .. '/' .. isys .. '.lua'
         if exists(specific) then
           return run_with_sys(isys, specific, canon, function()
             return load_cached(canon, specific, canon)
@@ -207,7 +215,7 @@ do
         end
       end
       for _, r in ipairs(rs) do
-        local generic = r .. '/packages/' .. mod .. '/generic.lua'
+        local generic = r .. '/' .. mod .. '/generic.lua'
         if exists(generic) then
           return run_with_sys(isys, generic, canon, function()
             return load_cached(canon, generic, canon)
@@ -259,5 +267,95 @@ do
     local snap = {}
     for i, t in ipairs(queue) do snap[i] = t end
     return snap
+  end
+  -- Emit the idempotent POSIX sh install script for the current queue.
+  -- Uses $NESTDIR/$RECIPEDIR/$PACKAGEDIR at script runtime; OUT/WORK are
+  -- per-package shell locals. Env values come from entry.system.env.
+  local function sh_sq(s)
+    return "'" .. tostring(s):gsub("'", "'\\''") .. "'"
+  end
+  function require_script(nestdir, pkgdir)
+    local function abspath(p)
+      if p:sub(1, 1) == '/' then return p end
+      local h = io.popen('pwd')
+      local cwd = h and h:read('*l') or '.'
+      if h then h:close() end
+      return cwd .. '/' .. p
+    end
+    nestdir = abspath(nestdir or '.')
+    pkgdir = abspath(pkgdir or '.')
+    local out = { '#!/bin/sh\nset -eu\n' }
+    out[#out + 1] = 'NESTDIR=' .. sh_sq(nestdir) .. '\n'
+    out[#out + 1] = 'PACKAGEDIR=' .. sh_sq(pkgdir) .. '\n'
+    out[#out + 1] = 'mkdir -p "$NESTDIR/tmp"\n'
+    for _, e in ipairs(queue) do
+      local name = e.name or e.file or 'unknown'
+      local sys = e.sys or 'unknown'
+      out[#out + 1] = '# --- ' .. name .. '@' .. sys .. ' ---\n'
+      local stamp = '$NESTDIR/' .. sys .. '/.retrolunar-' .. name
+      local recipe_src = '$RECIPEDIR/' .. name .. '.lua'
+      if e.file then
+        local rf = e.file:gsub('^%./', '')
+        if rf:sub(1, 1) == '/' then
+          recipe_src = rf
+        else
+          rf = rf:gsub('^packages/', '')
+          recipe_src = '$PACKAGEDIR/' .. rf
+        end
+      end
+      out[#out + 1] = 'if [ -f ' .. stamp .. ' ]'
+      out[#out + 1] = ' && [ ' .. stamp .. ' -nt ' .. recipe_src .. ' ]'
+      if e.system and e.system.file then
+        local sf = e.system.file:gsub('^%./', '')
+        local sysref
+        if sf:sub(1, 1) == '/' then sysref = sf
+        else
+          sf = sf:gsub('^packages/', '')
+          sysref = '$PACKAGEDIR/' .. sf
+        end
+        out[#out + 1] = ' && [ ' .. stamp .. ' -nt ' .. sysref .. ' ]'
+      end
+      out[#out + 1] = '; then\n'
+      out[#out + 1] = '  echo "skip ' .. name .. '@' .. sys .. ' (fresh)"\n'
+      out[#out + 1] = 'else\n'
+      local env = e.system and e.system.env or nil
+      if type(env) == 'table' then
+        local names = {}
+        for k in pairs(env) do names[#names + 1] = k end
+        table.sort(names)
+        if #names > 0 then
+          local set = {}
+          for _, k in ipairs(names) do
+            set[#set + 1] = k .. '=' .. sh_sq(env[k])
+          end
+          out[#out + 1] = '  ' .. table.concat(set, ' ')
+            .. ' export ' .. table.concat(names, ' ') .. '\n'
+        end
+      end
+      out[#out + 1] = '  WORK=$(mktemp -d "$NESTDIR/tmp/work-XXXXXX")\n'
+      out[#out + 1] = '  OUT=$(mktemp -d "$NESTDIR/tmp/out-XXXXXX")\n'
+      out[#out + 1] = '  trap \'rm -rf "$WORK" "$OUT"\' EXIT\n'
+      out[#out + 1] = '  cd "$WORK"\n'
+      out[#out + 1] = '  RECIPEDIR="$PACKAGEDIR/' .. name .. '"\n'
+      out[#out + 1] = '  PACKAGEDIR="$PACKAGEDIR" NESTDIR="$NESTDIR"'
+        .. ' RECIPEDIR="$RECIPEDIR" OUT="$OUT" export PACKAGEDIR NESTDIR RECIPEDIR OUT\n'
+      local build = e.build
+      if type(build) == 'string' then
+        for raw in build:gmatch('[^\n]*\n?') do
+          local body = raw
+          if body ~= '' then
+            if body:sub(-1) ~= '\n' then body = body .. '\n' end
+            out[#out + 1] = '  ' .. body
+          end
+        end
+      end
+      out[#out + 1] = '  mkdir -p "$NESTDIR/' .. sys .. '"\n'
+      out[#out + 1] = '  cp -rf "$OUT"/. "$NESTDIR/' .. sys .. '/"\n'
+      out[#out + 1] = '  touch ' .. stamp .. '\n'
+      out[#out + 1] = '  rm -rf "$WORK" "$OUT"\n'
+      out[#out + 1] = '  trap - EXIT\n'
+      out[#out + 1] = 'fi\n'
+    end
+    return table.concat(out)
   end
 end

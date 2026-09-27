@@ -1,6 +1,6 @@
 return system({
     env = {
-        PREFIX="$NEST/clang-native",
+        PREFIX="$NESTDIR/clang-native",
         CC = "clang",
         CXX = "clang++",
         AR = "llvm-ar",

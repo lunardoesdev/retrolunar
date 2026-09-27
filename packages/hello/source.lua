@@ -1,5 +1,6 @@
 return recipe({
     build = [[
-        cp -rf $RECIPEDIR/main.c $OUT
+        mkdir -p $OUT/hello
+        cp -rf $RECIPEDIR/main.c $OUT/hello
     ]]
 })
