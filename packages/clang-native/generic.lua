@@ -19,9 +19,9 @@ return system({
         PKG_CONFIG_LIBDIR = "$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig",
         PKG_CONFIG_PATH = "",
 
-        AUTOCONF_CONFIGURE_FLAGS = "--prefix=$OUT",
+        AUTOCONF_CONFIGURE_FLAGS = "--prefix=$PREFIX",
 
         CMAKE_PREFIX_PATH = "$PREFIX",
-        CMAKE_FLAGS = "-DCMAKE_INSTALL_PREFIX=$OUT -DCMAKE_PREFIX_PATH=$PREFIX"
+        CMAKE_FLAGS = "-DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX"
     }
 })

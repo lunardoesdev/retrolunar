@@ -280,7 +280,18 @@ do
       local h = io.popen('pwd')
       local cwd = h and h:read('*l') or '.'
       if h then h:close() end
-      return cwd .. '/' .. p
+      -- collapse ./ and trailing /.: callers pass ./nest, ./packages.
+      local joined = cwd .. '/' .. p
+      local parts = {}
+      for tok in joined:gmatch('[^/]+') do
+        if tok == '.' then
+        elseif tok == '..' then
+          if #parts > 0 then parts[#parts] = nil end
+        else
+          parts[#parts + 1] = tok
+        end
+      end
+      return '/' .. table.concat(parts, '/')
     end
     nestdir = abspath(nestdir or '.')
     pkgdir = abspath(pkgdir or '.')
@@ -331,35 +342,36 @@ do
       out[#out + 1] = '; then\n'
       out[#out + 1] = '  echo "skip ' .. name .. '@' .. sys .. ' (fresh)"\n'
       out[#out + 1] = 'else\n'
-      local env = e.system and e.system.env or nil
-      if type(env) == 'table' then
-        local names = {}
-        for k in pairs(env) do names[#names + 1] = k end
-        table.sort(names)
-        if #names > 0 then
-          local set = {}
-          for _, k in ipairs(names) do
-            set[#set + 1] = k .. '=' .. sh_sq(env[k])
-          end
-          out[#out + 1] = '  ' .. table.concat(set, ' ')
-            .. ' export ' .. table.concat(names, ' ') .. '\n'
-        end
-      end
+      -- Dirs first so env values can reference them; env assignments use
+      -- double quotes so $PREFIX/$OUT/$SYSDIR expand immediately instead
+      -- of nesting one level too deep (cmake receives the literal text).
       out[#out + 1] = '  WORK=$(mktemp -d "$NESTDIR/tmp/work-XXXXXX")\n'
       out[#out + 1] = '  OUT=$(mktemp -d "$NESTDIR/tmp/out-XXXXXX")\n'
       out[#out + 1] = '  trap \'rm -rf "$WORK" "$OUT"\' EXIT\n'
       out[#out + 1] = '  cd "$WORK"\n'
       out[#out + 1] = '  PREFIX="$NESTDIR/' .. sys .. '"\n'
       out[#out + 1] = '  RECIPEDIR="$PACKAGEDIR/' .. name .. '"\n'
+      if e.system and e.system.dir then
+        local sd = e.system.dir:gsub('^%./', '')
+        if sd:sub(1, 1) == '/' then
+          out[#out + 1] = '  SYSDIR=' .. sh_sq(sd) .. '\n'
+        else
+          sd = sd:gsub('^packages/', '')
+          out[#out + 1] = '  SYSDIR="$PACKAGEDIR/' .. sd .. '"\n'
+        end
+      else
+        out[#out + 1] = '  SYSDIR="$PACKAGEDIR/' .. sys .. '"\n'
+      end
       out[#out + 1] = '  PACKAGEDIR="$PACKAGEDIR" NESTDIR="$NESTDIR"'
-        .. ' RECIPEDIR="$RECIPEDIR" OUT="$OUT" PREFIX="$PREFIX"'
-        .. ' export PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX\n'
-      -- setup runs after env + WORK/OUT/PREFIX exist: it may use $CC
-      -- (e.g. CC_aarch64_linux_android="$CC") and write into $WORK.
-      local setup = e.system and e.system.setup or nil
-      if type(setup) == 'string' and setup ~= '' then
-        -- setup may contain heredocs: terminators must start at column 0.
-        for raw in setup:gmatch('[^\n]*\n?') do
+        .. ' RECIPEDIR="$RECIPEDIR" OUT="$OUT" PREFIX="$PREFIX" SYSDIR="$SYSDIR"'
+        .. ' export PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX SYSDIR\n'
+      -- preenv before env: NDK discovery defines TOOLCHAIN/SYSROOT/PATH
+      -- which env values ($SYSROOT, cargo $CC/$CFLAGS) reference.
+      -- postenv after env: sees toolchain vars (e.g. cargo CC_* exports).
+      local function emit_hook(src)
+        if type(src) ~= 'string' or src == '' then return end
+        -- hooks may contain heredocs: terminators must start at column 0.
+        for raw in src:gmatch('[^\n]*\n?') do
           local body = raw
           if body ~= '' then
             if body:sub(-1) ~= '\n' then body = body .. '\n' end
@@ -372,18 +384,74 @@ do
           end
         end
       end
+      emit_hook(e.system and e.system.preenv or nil)
+      -- env after setup; values expand immediately (double quotes) so
+      -- cmake receives literals, not nested $ refs. Toposorted so
+      -- AS="$CC" and CFLAGS="$SYSROOT..." come after their deps.
+      local env = e.system and e.system.env or nil
+      if type(env) == 'table' then
+        local names = {}
+        for k in pairs(env) do names[#names + 1] = k end
+        table.sort(names)
+        local ordered, remaining = {}, {}
+        for _, k in ipairs(names) do remaining[k] = true end
+        local progress = true
+        while progress and next(remaining) do
+          progress = false
+          for _, k in ipairs(names) do
+            if remaining[k] then
+              local v = tostring(env[k])
+              local ready = true
+              for other in pairs(remaining) do
+                if other ~= k and v:find('$' .. other, 1, true) then
+                  ready = false break
+                end
+              end
+              if ready then
+                ordered[#ordered + 1] = k
+                remaining[k] = nil
+                progress = true
+              end
+            end
+          end
+        end
+        for _, k in ipairs(names) do
+          if remaining[k] then ordered[#ordered + 1] = k end
+        end
+        for _, k in ipairs(ordered) do
+          local v = tostring(env[k])
+          v = v:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('`', '\\`')
+          out[#out + 1] = '  ' .. k .. '="' .. v .. '"\n'
+        end
+        out[#out + 1] = '  export ' .. table.concat(ordered, ' ') .. '\n'
+      end
+      emit_hook(e.system and e.system.postenv or nil)
       local build = e.build
       if type(build) == 'string' then
+        -- Same heredoc rule as setup: bare EOF terminates at column 0.
         for raw in build:gmatch('[^\n]*\n?') do
           local body = raw
           if body ~= '' then
             if body:sub(-1) ~= '\n' then body = body .. '\n' end
-            out[#out + 1] = '  ' .. body
+            if body:match('^%s*EOF%s*$') then
+              body = 'EOF\n'
+            else
+              body = body:gsub('^  ', '', 1)
+            end
+            out[#out + 1] = body
           end
         end
       end
+      -- DESTDIR staging for real systems: builds install with
+      -- prefix=$PREFIX and DESTDIR=$OUT, so staged files land in
+      -- $OUT$PREFIX with final paths baked into .pc files.
+      -- `source` system has no PREFIX contract: plain $OUT merge.
       out[#out + 1] = '  mkdir -p "$NESTDIR/' .. sys .. '"\n'
-      out[#out + 1] = '  cp -rf "$OUT"/. "$NESTDIR/' .. sys .. '/"\n'
+      if sys == 'source' then
+        out[#out + 1] = '  cp -rf "$OUT"/. "$NESTDIR/' .. sys .. '/"\n'
+      else
+        out[#out + 1] = '  cp -rf "$OUT$PREFIX"/. "$NESTDIR/' .. sys .. '/"\n'
+      end
       out[#out + 1] = '  touch ' .. stamp .. '\n'
       out[#out + 1] = '  rm -rf "$WORK" "$OUT"\n'
       out[#out + 1] = '  trap - EXIT\n'
