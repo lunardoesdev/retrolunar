@@ -61,6 +61,11 @@ return system({
         export PATH
         SYSROOT="$TOOLCHAIN/sysroot"
         export SYSROOT
+
+        # Toolchain vars (CC/CFLAGS/...) come from the env block;
+        # here only NDK discovery + files needing $WORK.
+
+
         CC_aarch64_linux_android="$CC"
         export CC_aarch64_linux_android
         CFLAGS_aarch64_linux_android="$CFLAGS"
