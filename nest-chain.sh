@@ -89,8 +89,12 @@ else
       export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
 
       # --- search paths: our prefix first, NDK sysroot second ---
-      # No bare -I/-L here: ./configure probes would pick the NDK's
-      # own ancient zlib headers without the explicit $PREFIX first.
+      # CPPFLAGS covers the autoconf probes (e.g. libpng's zlib check
+      # and its pnglibconf.h generation, which call $CC -E without
+      # $CFLAGS); without $PREFIX first they find the NDK's own
+      # ancient zlib.h in the sysroot instead of ours.
+      CPPFLAGS="-I$PREFIX/include"
+      export CPPFLAGS
       CFLAGS="-O2 -fPIC"
       CFLAGS="$CFLAGS -I$PREFIX/include"
       CFLAGS="$CFLAGS -DANDROID -isystem $SYSROOT/usr/include"
@@ -98,7 +102,8 @@ else
       export CFLAGS CXXFLAGS
       # Kept empty on purpose: rust links via RUSTFLAGS below, and a
       # global -L would leak host-style rpath flags into cargo.
-      LDFLAGS=""
+      LDFLAGS="-L$PREFIX/lib"
+      LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
       export LDFLAGS
       # Look up .pc files in our prefix, then the NDK sysroot...
       PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
@@ -247,8 +252,12 @@ else
       export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
 
       # --- search paths: our prefix first, NDK sysroot second ---
-      # No bare -I/-L here: ./configure probes would pick the NDK's
-      # own ancient zlib headers without the explicit $PREFIX first.
+      # CPPFLAGS covers the autoconf probes (e.g. libpng's zlib check
+      # and its pnglibconf.h generation, which call $CC -E without
+      # $CFLAGS); without $PREFIX first they find the NDK's own
+      # ancient zlib.h in the sysroot instead of ours.
+      CPPFLAGS="-I$PREFIX/include"
+      export CPPFLAGS
       CFLAGS="-O2 -fPIC"
       CFLAGS="$CFLAGS -I$PREFIX/include"
       CFLAGS="$CFLAGS -DANDROID -isystem $SYSROOT/usr/include"
@@ -256,7 +265,8 @@ else
       export CFLAGS CXXFLAGS
       # Kept empty on purpose: rust links via RUSTFLAGS below, and a
       # global -L would leak host-style rpath flags into cargo.
-      LDFLAGS=""
+      LDFLAGS="-L$PREFIX/lib"
+      LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
       export LDFLAGS
       # Look up .pc files in our prefix, then the NDK sysroot...
       PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
@@ -299,8 +309,6 @@ else
       export CC_aarch64_linux_android CFLAGS_aarch64_linux_android
       export CXX_aarch64_linux_android CXXFLAGS_aarch64_linux_android
   
-      export CPPFLAGS="-I$PREFIX/include"
-      export LDFLAGS="-L$PREFIX/lib -Wl,-rpath-link,$PREFIX/lib"
       cp -r $NESTDIR/source/libpng/* .
       ./configure $AUTOCONF_CONFIGURE_FLAGS --with-zlib-prefix="$PREFIX"
       make -j$(nproc 2>/dev/null || echo 4)
@@ -407,8 +415,12 @@ else
       export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
 
       # --- search paths: our prefix first, NDK sysroot second ---
-      # No bare -I/-L here: ./configure probes would pick the NDK's
-      # own ancient zlib headers without the explicit $PREFIX first.
+      # CPPFLAGS covers the autoconf probes (e.g. libpng's zlib check
+      # and its pnglibconf.h generation, which call $CC -E without
+      # $CFLAGS); without $PREFIX first they find the NDK's own
+      # ancient zlib.h in the sysroot instead of ours.
+      CPPFLAGS="-I$PREFIX/include"
+      export CPPFLAGS
       CFLAGS="-O2 -fPIC"
       CFLAGS="$CFLAGS -I$PREFIX/include"
       CFLAGS="$CFLAGS -DANDROID -isystem $SYSROOT/usr/include"
@@ -416,7 +428,8 @@ else
       export CFLAGS CXXFLAGS
       # Kept empty on purpose: rust links via RUSTFLAGS below, and a
       # global -L would leak host-style rpath flags into cargo.
-      LDFLAGS=""
+      LDFLAGS="-L$PREFIX/lib"
+      LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
       export LDFLAGS
       # Look up .pc files in our prefix, then the NDK sysroot...
       PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
@@ -459,8 +472,6 @@ else
       export CC_aarch64_linux_android CFLAGS_aarch64_linux_android
       export CXX_aarch64_linux_android CXXFLAGS_aarch64_linux_android
   
-      export CPPFLAGS="-I$PREFIX/include -I$PREFIX/include/libpng16"
-      export CFLAGS="-O2 -fPIC -I$PREFIX/include -I$PREFIX/include/libpng16 -DANDROID"
       cp -r $NESTDIR/source/freetype/* .
       meson setup build $MESON_FLAGS \
           -Dzlib=system -Dpng=enabled \
@@ -532,8 +543,12 @@ else
       export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
 
       # --- search paths: our prefix first, NDK sysroot second ---
-      # No bare -I/-L here: ./configure probes would pick the NDK's
-      # own ancient zlib headers without the explicit $PREFIX first.
+      # CPPFLAGS covers the autoconf probes (e.g. libpng's zlib check
+      # and its pnglibconf.h generation, which call $CC -E without
+      # $CFLAGS); without $PREFIX first they find the NDK's own
+      # ancient zlib.h in the sysroot instead of ours.
+      CPPFLAGS="-I$PREFIX/include"
+      export CPPFLAGS
       CFLAGS="-O2 -fPIC"
       CFLAGS="$CFLAGS -I$PREFIX/include"
       CFLAGS="$CFLAGS -DANDROID -isystem $SYSROOT/usr/include"
@@ -541,7 +556,8 @@ else
       export CFLAGS CXXFLAGS
       # Kept empty on purpose: rust links via RUSTFLAGS below, and a
       # global -L would leak host-style rpath flags into cargo.
-      LDFLAGS=""
+      LDFLAGS="-L$PREFIX/lib"
+      LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
       export LDFLAGS
       # Look up .pc files in our prefix, then the NDK sysroot...
       PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"

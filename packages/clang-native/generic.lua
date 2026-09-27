@@ -19,9 +19,13 @@ return system({
 
         # --- search paths: headers, libraries, pkg-config ---
         # $PREFIX points at this system's nest dir, where deps landed.
+        # CPPFLAGS/LDFLAGS cover the autoconf probes (e.g. libpng's
+        # zlib check); plain CFLAGS stay clean for direct $CC users.
         CPPFLAGS="-I$PREFIX/include"
         CFLAGS="-O2 -fPIC"
+        CFLAGS="$CFLAGS $CPPFLAGS"
         CXXFLAGS="-O2 -fPIC"
+        CXXFLAGS="$CXXFLAGS $CPPFLAGS"
         LDFLAGS="-L$PREFIX/lib"
         LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
         LDFLAGS="$LDFLAGS -Wl,--undefined-version"
