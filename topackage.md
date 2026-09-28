@@ -9,7 +9,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Autoconf 2.72
 - [x] Automake 1.18.1
 - [ ] Bash 5.3
-- [ ] Bc 7.0.3
+- [x] Bc 7.0.3
 - [ ] Binutils 2.45
 - [ ] Bison 3.8.2
 - [ ] Bzip2 1.0.8
