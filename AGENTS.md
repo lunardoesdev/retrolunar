@@ -19,6 +19,15 @@ sh -n build.sh
 ANDROID_HOME=/path/to/sdk sh build.sh
 ```
 
+## Design principle
+
+Keep recipes, system definitions, and generated build scripts clear,
+explicit, and easy to audit. Prefer ordinary upstream build steps and the
+smallest necessary, understandable set of flags. Explain non-obvious flags
+and recipe-local workarounds. Avoid cryptic flags, shell tricks, hidden
+behavior, and vendored or locally applied patches; recipes must not patch
+upstream sources.
+
 ## Layout
 
 - `packages/<name>/source.lua` — fetch recipe: downloads and unpacks
