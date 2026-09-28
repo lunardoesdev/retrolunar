@@ -68,7 +68,7 @@ return system({
         export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 
         # --- build-system defaults: install into $OUT, find in $PREFIX ---
-        AUTOCONF_CONFIGURE_FLAGS="--host=i686-linux-android"
+        AUTOCONF_CONFIGURE_FLAGS="--host=i686-linux-android --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
         CMAKE_TOOLCHAIN_FILE="$SYSDIR/i686-linux-android21-toolchain.cmake"

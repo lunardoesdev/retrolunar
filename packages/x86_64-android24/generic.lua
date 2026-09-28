@@ -1,4 +1,4 @@
--- armv7a-linux-androideabi21: NDK cross toolchain (from env.sh article).
+-- x86_64-linux-android24: NDK cross toolchain (from env.sh article).
 -- Installs go to $OUT (per-package stage dir, merged into
 -- $NESTDIR/<sys> on success); $PREFIX is the search path where earlier
 -- packages landed. cmake/meson files live next to this recipe and are
@@ -13,7 +13,7 @@ return system({
           printf '%s\n' "${_ndk_cand##*/}"
         done | sort -V | tail -1)"
         if [ -z "$_ndk_ver" ]; then
-          echo "armv7a-android21: no NDK under $ANDROID_HOME/ndk" >&2
+          echo "x86_64-android24: no NDK under $ANDROID_HOME/ndk" >&2
           unset _ndk_ver _ndk_cand
           exit 1
         fi
@@ -29,8 +29,8 @@ return system({
 
         # --- toolchain: NDK clang wrappers + llvm binutils ---
         # Wrappers already encode the API level (21).
-        CC="armv7a-linux-androideabi21-clang"
-        CXX="armv7a-linux-androideabi21-clang++"
+        CC="x86_64-linux-android24-clang"
+        CXX="x86_64-linux-android24-clang++"
         AR="llvm-ar"
         RANLIB="llvm-ranlib"
         LD="ld.lld"
@@ -68,35 +68,35 @@ return system({
         export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 
         # --- build-system defaults: install into $OUT, find in $PREFIX ---
-        AUTOCONF_CONFIGURE_FLAGS="--host=armv7a-linux-androideabi --build=x86_64-pc-linux-gnu"
+        AUTOCONF_CONFIGURE_FLAGS="--host=x86_64-linux-android --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
-        CMAKE_TOOLCHAIN_FILE="$SYSDIR/armv7a-linux-androideabi21-toolchain.cmake"
+        CMAKE_TOOLCHAIN_FILE="$SYSDIR/x86_64-linux-android24-toolchain.cmake"
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
         export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
-        MESON_CROSS_FILE="$SYSDIR/crossfile-armv7a-android21.ini"
+        MESON_CROSS_FILE="$SYSDIR/crossfile-x86_64-android24.ini"
         MESON_FLAGS="--prefix=$OUT"
         MESON_FLAGS="$MESON_FLAGS --cross-file $MESON_CROSS_FILE"
         export MESON_CROSS_FILE MESON_FLAGS
 
         # --- rust: target, linker, link path, cross pkg-config ---
         # cc-crate Vars mirror $CC/$CFLAGS for build scripts.
-        CARGO_BUILD_TARGET="armv7-linux-androideabi"
-        CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$CC"
-        CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR="$AR"
+        CARGO_BUILD_TARGET="x86_64-linux-android"
+        CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CC"
+        CARGO_TARGET_X86_64_LINUX_ANDROID_AR="$AR"
         RUSTFLAGS="-L $PREFIX/lib"
         PKG_CONFIG_ALLOW_CROSS="1"
-        CC_armv7_linux_androideabi="$CC"
-        CFLAGS_armv7_linux_androideabi="$CFLAGS"
-        CXX_armv7_linux_androideabi="$CXX"
-        CXXFLAGS_armv7_linux_androideabi="$CXXFLAGS"
-        export CARGO_BUILD_TARGET CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER
-        export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR RUSTFLAGS
+        CC_x86_64_linux_android="$CC"
+        CFLAGS_x86_64_linux_android="$CFLAGS"
+        CXX_x86_64_linux_android="$CXX"
+        CXXFLAGS_x86_64_linux_android="$CXXFLAGS"
+        export CARGO_BUILD_TARGET CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER
+        export CARGO_TARGET_X86_64_LINUX_ANDROID_AR RUSTFLAGS
         export PKG_CONFIG_ALLOW_CROSS
-        export CC_armv7_linux_androideabi CFLAGS_armv7_linux_androideabi
-        export CXX_armv7_linux_androideabi CXXFLAGS_armv7_linux_androideabi
+        export CC_x86_64_linux_android CFLAGS_x86_64_linux_android
+        export CXX_x86_64_linux_android CXXFLAGS_x86_64_linux_android
     ]],
 })

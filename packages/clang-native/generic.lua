@@ -37,7 +37,7 @@ return system({
         export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 
         # --- build-system defaults: install into $OUT ---
-        AUTOCONF_CONFIGURE_FLAGS="--prefix=$OUT"
+        AUTOCONF_CONFIGURE_FLAGS="--build=x86_64-pc-linux-gnu --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT"

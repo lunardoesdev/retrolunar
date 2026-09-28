@@ -386,6 +386,23 @@ do
       end
       local build = e.build
       if type(build) == 'string' then
+        -- Recipe fields (version/git/tag/...) become shell vars so
+        -- $version etc. work in build bodies. Strings only; skip
+        -- tables (system), functions, and reserved build/file/dir keys.
+        local fkeys = {}
+        for k in pairs(e) do fkeys[#fkeys + 1] = k end
+        table.sort(fkeys)
+        for _, k in ipairs(fkeys) do
+          if k ~= 'build' and k ~= 'file' and k ~= 'dir'
+            and k ~= 'sys' and k ~= 'system' and k ~= 'name'
+            and k:match('^[A-Za-z_][A-Za-z0-9_]*$') then
+            local v = e[k]
+            if type(v) == 'string' then
+              out[#out + 1] = '      ' .. k .. '='
+                .. "'" .. v:gsub("'", "'\\''") .. "'\n"
+            end
+          end
+        end
         -- Same heredoc rule as setup: bare EOF terminates at column 0.
         for raw in build:gmatch('[^\n]*\n?') do
           local body = raw

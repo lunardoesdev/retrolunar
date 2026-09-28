@@ -13,7 +13,7 @@ return system({
           printf '%s\n' "${_ndk_cand##*/}"
         done | sort -V | tail -1)"
         if [ -z "$_ndk_ver" ]; then
-          echo "armv7a-android21: no NDK under $ANDROID_HOME/ndk" >&2
+          echo "armv7a-android24: no NDK under $ANDROID_HOME/ndk" >&2
           unset _ndk_ver _ndk_cand
           exit 1
         fi
@@ -77,7 +77,7 @@ return system({
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
         export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
-        MESON_CROSS_FILE="$SYSDIR/crossfile-armv7a-android21.ini"
+        MESON_CROSS_FILE="$SYSDIR/crossfile-armv7a-android24.ini"
         MESON_FLAGS="--prefix=$OUT"
         MESON_FLAGS="$MESON_FLAGS --cross-file $MESON_CROSS_FILE"
         export MESON_CROSS_FILE MESON_FLAGS
