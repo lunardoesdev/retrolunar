@@ -30,7 +30,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Gettext 0.26
 - [ ] Glibc 2.42
 - [ ] GMP 6.3.0
-- [ ] Gperf 3.3
+- [x] Gperf 3.3
 - [ ] Grep 3.12
 - [ ] Groff 1.23.0
 - [ ] GRUB 2.12
