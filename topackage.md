@@ -76,7 +76,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Systemd Man Pages 257.8
 - [ ] SysVinit 3.14
 - [ ] Tar 1.35
-- [ ] Tcl 8.6.16
+- [x] Tcl 8.6.16
 - [ ] Tcl Documentation 8.6.16
 - [ ] Texinfo 7.2
 - [ ] Time Zone Data 2025b
