@@ -34,12 +34,14 @@ return system({
         AR="llvm-ar"
         RANLIB="llvm-ranlib"
         LD="ld.lld"
+        AS="$CC"
+        ASM="$CC"
         STRIP="llvm-strip"
         OBJCOPY="llvm-objcopy"
         READELF="llvm-readelf"
         NM="llvm-nm"
         OBJDUMP="llvm-objdump"
-        export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
+        export CC CXX AR RANLIB LD AS ASM STRIP OBJCOPY READELF NM OBJDUMP
 
         # --- search paths: our prefix first, NDK sysroot second ---
         # CPPFLAGS covers the autoconf probes (e.g. libpng's zlib check
