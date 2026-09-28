@@ -21,7 +21,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Expat 2.7.1
 - [ ] Expect 5.45.4 (blocked: bundled tclconfig/config.sub has no aarch64 support)
 - [ ] File 5.46 (blocked: magic.mgc needs file 5.46 on the build host)
-- [ ] Findutils 4.10.0
+- [ ] Findutils 4.10.0 (blocked: needs mktime_z, Bionic exposes it at API 35)
 - [ ] Flex 2.6.4
 - [ ] Flit-core 3.12.0
 - [ ] Gawk 5.3.2
