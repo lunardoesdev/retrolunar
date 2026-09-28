@@ -8,7 +8,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Attr 2.5.2
 - [x] Autoconf 2.72
 - [x] Automake 1.18.1
-- [ ] Bash 5.3
+- [ ] Bash 5.3 (Android 24 blocked: getgrent requires API 26)
 - [x] Bc 7.0.3
 - [x] Binutils 2.45 (gprofng disabled; Android 24 lacks pthread cancellation APIs)
 - [x] Bison 3.8.2
