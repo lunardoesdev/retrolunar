@@ -1,6 +1,8 @@
-# Packages to add
+# LFS packages to add or update
 
-Checklist based on the [Linux From Scratch 12.4, Chapter 3.2: All Packages](https://www.linuxfromscratch.org/lfs/view/stable/chapter03/packages.html). Versions below are the versions listed by that book. Python (including its documentation tarball) and the Linux kernel are intentionally excluded. Other supporting source/data tarballs listed by LFS are included.
+Checklist based on the [Linux From Scratch 12.4, Chapter 3.2: All Packages](https://www.linuxfromscratch.org/lfs/view/stable/chapter03/packages.html). Versions below are the versions listed by that book. Python (including its documentation tarball) and the Linux kernel are intentionally excluded; other supporting source/data tarballs listed by LFS are included.
+
+Packages already in this repository remain on this list as candidates for version or build-script updates. Do not filter the list to only packages that are currently missing.
 
 - [ ] Acl 2.3.2
 - [ ] Attr 2.5.2
