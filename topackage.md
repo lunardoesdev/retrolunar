@@ -23,7 +23,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] File 5.46 (blocked: magic.mgc needs file 5.46 on the build host)
 - [ ] Findutils 4.10.0 (blocked: needs mktime_z, Bionic exposes it at API 35)
 - [ ] Flex 2.6.4 (blocked: cross build selects an incomplete realloc replacement)
-- [ ] Flit-core 3.12.0
+- [x] Flit-core 3.12.0 (module only; no dist-info without host pip)
 - [ ] Gawk 5.3.2
 - [ ] GCC 15.2.0
 - [ ] GDBM 1.26
