@@ -18,7 +18,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Diffutils 3.12 (blocked: src/system.h needs <stdbit.h>, absent in the NDK)
 - [ ] E2fsprogs 1.47.3 (blocked: upstream tarball URLs return 404)
 - [ ] Elfutils 0.193 (blocked: configure requires argp_parse, absent in Bionic)
-- [ ] Expat 2.7.1
+- [x] Expat 2.7.1
 - [ ] Expect 5.45.4 (blocked: bundled tclconfig/config.sub has no aarch64 support)
 - [ ] File 5.46
 - [ ] Findutils 4.10.0
