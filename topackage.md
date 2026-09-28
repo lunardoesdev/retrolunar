@@ -56,7 +56,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Man-pages 6.15
 - [ ] MarkupSafe 3.0.2
 - [ ] Meson 1.8.3
-- [ ] MPC 1.3.1
+- [x] MPC 1.3.1
 - [x] MPFR 4.2.2
 - [ ] Ncurses 6.5-20250809
 - [ ] Ninja 1.13.1
