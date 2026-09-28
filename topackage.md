@@ -57,7 +57,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] MarkupSafe 3.0.2
 - [ ] Meson 1.8.3
 - [ ] MPC 1.3.1
-- [ ] MPFR 4.2.2
+- [x] MPFR 4.2.2
 - [ ] Ncurses 6.5-20250809
 - [ ] Ninja 1.13.1
 - [ ] OpenSSL 3.5.2
