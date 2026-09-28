@@ -174,10 +174,12 @@ Rules:
   termcap needs `CC="$CC -std=gnu89"` because it predates prototypes).
 - Build-body hygiene (hard rules): only `cp`, `./configure`, `cmake`,
   `make`, `make install`, `touch`, `find`, `mkdir`, `cat`-heredocs.
-  NEVER `sed`, patches, `/dev/null`, or parallel `make` (`-j`, `nproc`).
-  Single-thread `make` keeps logs readable and ordering deterministic.
-  (Legacy exception: `packages/opencv/generic.lua` still uses
-  `cmake --build build -j$(nproc ...)` — clean it up when touching it.)
+  NEVER `sed`, patches, `/dev/null`, or multi-job builds. Build serially:
+  use `make -j1` or the build tool's equivalent single-job option. This
+  keeps logs readable and ordering deterministic.
+  (Legacy violation: `packages/opencv/generic.lua` uses
+  `cmake --build build -j$(nproc ...)`; change it to one job before running
+  or otherwise touching it.)
 - Autotools timestamp guard after every `./configure` (tarball mtimes
   trigger `aclocal-1.17` re-runs we don't have):
   `touch aclocal.m4 configure config.h.in` +
@@ -242,6 +244,9 @@ sh -n build.sh                        # syntax gate, always
 ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
 ```
 
+- When asked to add package(s), implement them and run their build on one
+  suitable provided system. Preserve `./nest` and reuse its successful
+  outputs; do not delete it or force dependency rebuilds unless necessary.
 - Use `jj` (not `git`) for repository commits. Commit each completed logical
   change promptly; package work gets one commit per package
   (`jj commit -m 'name version (what it is)'`). Keep `./nest` between builds
