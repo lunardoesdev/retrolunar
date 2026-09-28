@@ -1,10 +1,10 @@
 require("zlib")
 require("binutils@source")
 
-return recipe({
+return {
     build = [[
         cp -r $NESTDIR/source/binutils/* .
-        # Use the staged Zlib package and build the default BFD linker.
+        # Android lacks pthread cancellation APIs used by gprofng.
         ./configure $AUTOCONF_CONFIGURE_FLAGS \
             --enable-ld=default \
             --enable-plugins \
@@ -13,10 +13,11 @@ return recipe({
             --enable-64-bit-bfd \
             --enable-new-dtags \
             --with-system-zlib \
+            --disable-gprofng \
             --enable-default-hash-style=gnu
         touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' | xargs touch
         make -j1 tooldir="$OUT"
         make -j1 tooldir="$OUT" install
     ]]
-})
+}
