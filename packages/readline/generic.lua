@@ -1,3 +1,4 @@
+require("termcap")
 require("readline@source")
 
 return recipe({
@@ -10,8 +11,5 @@ return recipe({
         find . -name 'Makefile.in' | xargs touch
         make
         make install
-        # objects ship inside libreadline itself (--without-curses, no
-        # external termcap lib). Satisfy pkg-config with an empty stub.
-        printf 'Name: termcap\nDescription: stub (termcap folded into libreadline)\nVersion: 8.3\nLibs:\nCflags:\n' > $OUT/lib/pkgconfig/termcap.pc
     ]]
 })
