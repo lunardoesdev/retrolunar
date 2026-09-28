@@ -174,6 +174,12 @@ Rules:
 - `require("dep")` inherits your system; `require("dep@sys")` pins one
   (explicit always wins). `require("ownname@source")` pulls your sources,
   copied from `$NESTDIR/source/<name>/` (not `$OUT`).
+- Keep `generic.lua` system-neutral. Put target-only flags and workarounds in a
+  `packages/<name>/<sys>.lua` override for every supported system that needs
+  them; do not leak Android-specific behavior into the generic fallback. If
+  several targets share the same special recipe, their short system-specific
+  files may delegate to a clearly named package-local module such as
+  `android.lua` instead of duplicating the recipe body.
 - Build-system flags come from the system, never hardcoded:
   `$CMAKE_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$MESON_FLAGS`.
   Search flags (`CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_*`) also come from the
