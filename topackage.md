@@ -19,7 +19,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] E2fsprogs 1.47.3
 - [ ] Elfutils 0.193
 - [ ] Expat 2.7.1
-- [ ] Expect 5.45.4
+- [ ] Expect 5.45.4 (blocked: bundled tclconfig/config.sub has no aarch64 support)
 - [ ] File 5.46
 - [ ] Findutils 4.10.0
 - [ ] Flex 2.6.4
