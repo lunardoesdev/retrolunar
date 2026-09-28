@@ -50,7 +50,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Libtool 2.5.4
 - [ ] Libxcrypt 4.4.38
 - [ ] Lz4 1.10.0
-- [ ] M4 1.4.20
+- [x] M4 1.4.20
 - [ ] Make 4.4.1
 - [ ] Man-DB 2.13.1
 - [ ] Man-pages 6.15
