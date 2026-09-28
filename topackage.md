@@ -14,7 +14,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Bison 3.8.2
 - [x] Bzip2 1.0.8
 - [x] Coreutils 9.7
-- [ ] DejaGNU 1.6.3
+- [x] DejaGNU 1.6.3
 - [ ] Diffutils 3.12
 - [ ] E2fsprogs 1.47.3
 - [ ] Elfutils 0.193
