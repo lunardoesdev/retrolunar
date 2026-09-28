@@ -67,7 +67,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Pkgconf 2.5.1
 - [ ] Procps 4.0.5
 - [ ] Psmisc 23.7
-- [ ] Readline 8.3
+- [x] Readline 8.3
 - [ ] Sed 4.9
 - [ ] Setuptools 80.9.0
 - [ ] Shadow 4.18.0
