@@ -24,8 +24,9 @@ ANDROID_HOME=/path/to/sdk sh build.sh
 - `packages/<name>/source.lua` — fetch recipe: downloads and unpacks
   upstream sources, copies the tree to `$OUT/<name>/`. Runs under the
   `source` pseudo-system, lands in `$NESTDIR/source/<name>/`.
-- `packages/<name>/generic.lua` — build recipe for every system (used
-  unless a system-specific `<sys>.lua` file exists next to it).
+- `packages/<name>/generic.lua` — fallback build recipe when the package has
+  no recipe for the requested system. It runs for that requested system; it
+  is not a separate target system.
 - `packages/<sys>/generic.lua` — system description: a `system({setup=...})`
   call whose `setup` shell fragment defines the whole toolchain
   environment. Systems live in the same `packages/` tree as packages.
@@ -241,10 +242,12 @@ sh -n build.sh                        # syntax gate, always
 ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
 ```
 
-- One commit per package (`jj commit -m 'name version (what it is)'`).
-  Keep `./nest` between builds so fresh deps aren't rebuilt; record
-  failures as `'<name> version attempt (blocked: reason)'` commits only
-  if sources were added, otherwise just drop the files.
+- Use `jj` (not `git`) for repository commits. Commit each completed logical
+  change promptly; package work gets one commit per package
+  (`jj commit -m 'name version (what it is)'`). Keep `./nest` between builds
+  so fresh deps aren't rebuilt; record failures as `'<name> version attempt
+  (blocked: reason)'` commits only if sources were added, otherwise just
+  drop the files.
 - Verify per package: artifact exists (`lib/libfoo.a`,
   `bin/tool`, `include/foo.h`), `pkg-config --modversion foo` if a `.pc`
   ships, rerun prints `skip ... (fresh)`.
