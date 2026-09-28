@@ -1,0 +1,237 @@
+# AGENTS.md — retrolunar package manager
+
+This file is for coding agents working in this repo. It describes how the
+package manager works and how to add or fix packages and systems.
+
+## What this is
+
+`retrolunar` is a tiny C binary with an embedded Lua 5.5 interpreter
+(`src/main.c`, Lua sources in `lua-5.5.1/`). At startup it runs the Lua
+loader (`src/loader.lua`, embedded into the binary via `src/embed.py` +
+meson `custom_target`). The loader overrides global `require` and the
+`install` subcommand prints a POSIX shell script that builds everything.
+
+Typical flow:
+
+```sh
+./builddir/retrolunar install --nest ./nest --packages ./packages 'pngprobe@aarch64-android24' > build.sh
+sh -n build.sh
+ANDROID_HOME=/path/to/sdk sh build.sh
+```
+
+## Layout
+
+- `packages/<name>/source.lua` — fetch recipe: downloads and unpacks
+  upstream sources, copies the tree to `$OUT/<name>/`. Runs under the
+  `source` pseudo-system, lands in `$NESTDIR/source/<name>/`.
+- `packages/<name>/generic.lua` — build recipe for every system (used
+  unless a system-specific `<sys>.lua` file exists next to it).
+- `packages/<sys>/generic.lua` — system description: a `system({setup=...})`
+  call whose `setup` shell fragment defines the whole toolchain
+  environment. Systems live in the same `packages/` tree as packages.
+- `packages/<sys>/*.cmake`, `*.ini` — cmake toolchain / meson cross files
+  shipped next to the system recipe, referenced via `$SYSDIR`.
+- `./nest` — build output (gitignored). `$NESTDIR/<sys>/` is the install
+  prefix per system, `$NESTDIR/source/<name>/` holds unpacked sources,
+  `$NESTDIR/tmp/` holds per-package `WORK`/`OUT` stage dirs.
+
+## The loader (`src/loader.lua`)
+
+Three `require` forms:
+
+- `require("pack@sys")` — exact: `packages/pack/sys.lua`, else
+  `packages/pack/generic.lua`, else error. Runs the chunk with `SYSTEM=sys`.
+- `require("pack")` — bare: inherits the requiring module's system from an
+  explicit stack (`sys_stack`); at top level uses the C default
+  (`DEFAULT_SYSTEM`, `"clang-native"`, overridable with
+  `-DRETROLUNAR_DEFAULT_SYSTEM=...`). Inside a system file (stack top is
+  `generic`) bare requires also fall back to the C default. Exact
+  `pack@sys` never consults the stack.
+- `require("./x")`, `require("../x")` — relative to the requiring file's
+  directory, then `RETROLUNAR_LIB` (default `.`). `a.b` maps to `a/b`.
+
+`recipe(t)` attaches `file`, `dir`, `sys`, and the real `system` table
+(loaded on demand as `sys@generic`), then appends `t` to the build queue.
+Queue order is dependency order for free: `require` calls run before the
+trailing `recipe()` call, so leaves land first; duplicates by canonical
+key (`pack@sys`) are an error. `require_queue()` returns a snapshot,
+`require_script(nestdir, pkgdir)` emits the install script,
+`require_system()` returns the current system. `system(t)` attaches
+`file`/`dir` and returns the table.
+
+Recipe fields (`version`, `git`, `tag`, plain strings) become shell
+variables in the generated block, so `$version` etc. work in build bodies.
+Reserved keys (`build`, `file`, `dir`, `sys`, `system`, `name`) are skipped.
+
+## The generated script
+
+Per queued package, one `if fresh ... else ... fi` block:
+
+- Freshness: stamp `$NESTDIR/<sys>/.retrolunar-<name>` newer than the
+  recipe file, the system file, and the system dir. Stale by any single
+  `-nt` comparison means rebuild; missing stamp means build.
+- Block prologue: system `setup` fragment, then
+  `WORK=$(mktemp -d ...)` + `OUT=$(mktemp -d ...)` under `$NESTDIR/tmp`,
+  `trap 'rm -rf "$WORK" "$OUT"' EXIT`, `cd "$WORK"`,
+  `PREFIX="$NESTDIR/<sys>"`, `RECIPEDIR="$PACKAGEDIR/<name>"`,
+  `SYSDIR` pointing at the system dir, all exported with
+  `PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX SYSDIR`.
+- Build body verbatim (heredoc `EOF` terminators normalized to column 0).
+- Staged `.pc` files get `$OUT` paths rewritten to `$PREFIX` via
+  `while read` + `awk` (no `sed -i`).
+- Publish only on success: `cp -rf "$OUT"/. "$NESTDIR/<sys>/"`, then
+  `touch` the stamp, `rm -rf` the stage dirs, `trap - EXIT`.
+
+`PREFIX` is the search path (earlier packages), `OUT` the install target:
+recipes pass `-DCMAKE_INSTALL_PREFIX=$OUT` / `--prefix=$OUT` and read
+deps from `$PREFIX`. Both plus `RECIPEDIR`/`PACKAGEDIR`/`NESTDIR` are
+exported shell vars, never baked absolute paths (except the script
+header, which absolutizes `--nest`/`--packages` so the script is
+cwd-independent).
+
+## Writing a source recipe (`source.lua`)
+
+Fetch-only. Pattern:
+
+```lua
+return recipe({
+    version = "1.3.1",
+    build = [[
+        mkdir -p dl
+        if [ ! -f dl/zlib.tar.gz ]; then
+          curl -fSL -C - -o dl/zlib.tar.gz "https://host/zlib-1.3.1.tar.gz"
+        fi
+        rm -rf src
+        mkdir -p src
+        tar -xzf dl/zlib.tar.gz -C src --strip-components=1
+        mkdir -p $OUT/zlib
+        cp -r src/* $OUT/zlib/
+    ]]
+})
+```
+
+- Tarball in `dl/`, skip re-download with `if [ ! -f ... ]`. Resume with
+  `curl -C -`. Mirrors: `|| curl ... mirror` on the same line.
+- Unpack to `src/`, then `mkdir -p $OUT/<name>` + `cp -r src/* $OUT/<name>/`.
+  `@source` never compiles — it only stages sources.
+- No checksums (project decision). Prefer release tarballs over git, but
+  git is allowed: `if [ ! -d src ]; then git clone --depth=1 --branch
+  "$tag" "$git" src; fi` (fields `git`/`tag` become shell vars; see
+  `packages/python/source.lua`).
+- Tarballs missing git submodules (protobuf, onnx) are unusable — check
+  for submodule content before writing the recipe.
+
+## Writing a build recipe (`generic.lua`)
+
+Requires first, one `recipe()` at the end:
+
+```lua
+require("zlib")
+require("libpng@source")
+
+return recipe({
+    build = [[
+        cp -r $NESTDIR/source/libpng/* .
+        ./configure $AUTOCONF_CONFIGURE_FLAGS --with-zlib-prefix="$PREFIX"
+        make
+        make install
+    ]]
+})
+```
+
+Rules:
+
+- `require("dep")` inherits your system; `require("dep@sys")` pins one
+  (explicit always wins). `require("ownname@source")` pulls your sources,
+  copied from `$NESTDIR/source/<name>/` (not `$OUT`).
+- Build-system flags come from the system, never hardcoded:
+  `$CMAKE_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$MESON_FLAGS`.
+  Search flags (`CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_*`) also come from the
+  system — never `export` them in a recipe. Exception: recipe-local
+  workarounds with a comment explaining why (e.g. readline needs
+  `CFLAGS="$CFLAGS -fPIC"` because python links it into a shared module;
+  termcap needs `CC="$CC -std=gnu89"` because it predates prototypes).
+- Build-body hygiene (hard rules): only `cp`, `./configure`, `cmake`,
+  `make`, `make install`, `touch`, `find`, `mkdir`, `cat`-heredocs.
+  NEVER `sed`, patches, `/dev/null`, or parallel `make` (`-j`, `nproc`).
+  Single-thread `make` keeps logs readable and ordering deterministic.
+  (Legacy exception: `packages/opencv/generic.lua` still uses
+  `cmake --build build -j$(nproc ...)` — clean it up when touching it.)
+- Autotools timestamp guard after every `./configure` (tarball mtimes
+  trigger `aclocal-1.17` re-runs we don't have):
+  `touch aclocal.m4 configure config.h.in` +
+  `find . -name 'Makefile.in' | xargs touch`
+  (also `Makefile.pre.in` for python).
+- Old C code (termcap 1.3.1): `export CC="$CC -std=gnu89"`.
+  Old `bool`-typedef code: `-std=gnu17` (NDK clang defaults to C23).
+- `make install` installs straight into `$OUT` (`--prefix=$OUT` /
+  `-DCMAKE_INSTALL_PREFIX=$OUT`); the emitter merges `$OUT` verbatim.
+- Per-buildsystem notes: cmake needs
+  `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` for old projects under cmake 4.x;
+  meson cross files live in `$SYSDIR`; cargo needs
+  `PKG_CONFIG_ALLOW_CROSS=1` + `RUSTFLAGS="-L $PREFIX/lib"`;
+  libvpx configure wants `--extra-cflags="--sysroot=$SYSROOT"`, not
+  `-isystem` (breaks libc++ include order).
+- Name-mismatch traps: mingw zlib installs as `libzlib`, but libpng
+  `configure` hardcodes `-lz` — the libpng recipe symlinks
+  `libz.* → libzlib.*` in `$PREFIX` first (commented, additive).
+
+## Writing a system (`<sys>/generic.lua`)
+
+Single `system({ setup = [[...]] })` with `VAR="value"` + grouped
+`export` lines. Sections with `# ---` comments:
+
+```sh
+# --- toolchain: NDK clang wrappers + llvm binutils ---
+CC="aarch64-linux-android24-clang"
+...
+export CC CXX AR ...
+# --- search paths: our prefix first, NDK sysroot second ---
+CPPFLAGS="-I$PREFIX/include"
+...
+# --- build-system defaults: install into $OUT, find in $PREFIX ---
+AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --build=x86_64-pc-linux-gnu"
+...
+```
+
+Rules:
+
+- Every cross system sets `AUTOCONF_CONFIGURE_FLAGS` with **both**
+  `--host=<triplet>` and `--build=x86_64-pc-linux-gnu` (python's configure
+  errors out without an explicit `--build`; others guess fine but
+  uniformity wins).
+- `--prefix=$OUT` / `-DCMAKE_INSTALL_PREFIX=$OUT` (install target),
+  search flags point at `$PREFIX` (where deps landed).
+- Keep values short: build long ones by appending
+  (`FOO="$FOO more"`), one `export A B C` per section, comments
+  explaining non-obvious choices (why `-isystem` is C-only, why `LDFLAGS`
+  is empty for cargo, why the NDK glob avoids `ls`).
+- cmake toolchain + meson crossfile go next to `generic.lua`, referenced
+  as `$SYSDIR/<file>` (never generated heredocs in the script).
+- New API level = copy the whole `<arch>-androidNN/` dir, rename every
+  `NN` in wrapper names, `--host`, file names, error strings. Existing
+  `android21` dirs stay untouched.
+
+## Workflow
+
+```sh
+ninja -C builddir retrolunar          # rebuild after loader/C changes
+./builddir/retrolunar install --nest ./nest --packages ./packages 'pkg@sys' > build.sh
+sh -n build.sh                        # syntax gate, always
+ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
+```
+
+- One commit per package (`jj commit -m 'name version (what it is)'`).
+  Keep `./nest` between builds so fresh deps aren't rebuilt; record
+  failures as `'<name> version attempt (blocked: reason)'` commits only
+  if sources were added, otherwise just drop the files.
+- Verify per package: artifact exists (`lib/libfoo.a`,
+  `bin/tool`, `include/foo.h`), `pkg-config --modversion foo` if a `.pc`
+  ships, rerun prints `skip ... (fresh)`.
+- Known platform walls (don't re-investigate, work around or drop):
+  API 21 lacks `stderr` as a real symbol, `POSIX_MADV_*`,
+  `process_vm_readv`, `posix_spawn`, `mblen`/`getpass`, `O_BINARY` —
+  anything needing them wants API 24+ or gets dropped (wget, bash, ninja,
+  llama.cpp). `sfml` is X11-only, `raylib` uses removed NDK APIs.
+- No `jj`/`git` commands inside recipes; no network access at build time
+  except `curl` in `source.lua` fetch blocks.
