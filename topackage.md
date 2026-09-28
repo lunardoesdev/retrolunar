@@ -1,0 +1,88 @@
+# Packages to add
+
+Checklist based on the [Linux From Scratch 12.4, Chapter 3.2: All Packages](https://www.linuxfromscratch.org/lfs/view/stable/chapter03/packages.html). Versions below are the versions listed by that book. Python (including its documentation tarball) and the Linux kernel are intentionally excluded. Other supporting source/data tarballs listed by LFS are included.
+
+- [ ] Acl 2.3.2
+- [ ] Attr 2.5.2
+- [ ] Autoconf 2.72
+- [ ] Automake 1.18.1
+- [ ] Bash 5.3
+- [ ] Bc 7.0.3
+- [ ] Binutils 2.45
+- [ ] Bison 3.8.2
+- [ ] Bzip2 1.0.8
+- [ ] Coreutils 9.7
+- [ ] DejaGNU 1.6.3
+- [ ] Diffutils 3.12
+- [ ] E2fsprogs 1.47.3
+- [ ] Elfutils 0.193
+- [ ] Expat 2.7.1
+- [ ] Expect 5.45.4
+- [ ] File 5.46
+- [ ] Findutils 4.10.0
+- [ ] Flex 2.6.4
+- [ ] Flit-core 3.12.0
+- [ ] Gawk 5.3.2
+- [ ] GCC 15.2.0
+- [ ] GDBM 1.26
+- [ ] Gettext 0.26
+- [ ] Glibc 2.42
+- [ ] GMP 6.3.0
+- [ ] Gperf 3.3
+- [ ] Grep 3.12
+- [ ] Groff 1.23.0
+- [ ] GRUB 2.12
+- [ ] Gzip 1.14
+- [ ] Iana-Etc 20250807
+- [ ] Inetutils 2.6
+- [ ] Intltool 0.51.0
+- [ ] IPRoute2 6.16.0
+- [ ] Jinja2 3.1.6
+- [ ] Kbd 2.8.0
+- [ ] Kmod 34.2
+- [ ] Less 679
+- [ ] LFS-Bootscripts 20250827
+- [ ] Libcap 2.76
+- [ ] Libffi 3.5.2
+- [ ] Libpipeline 1.5.8
+- [ ] Libtool 2.5.4
+- [ ] Libxcrypt 4.4.38
+- [ ] Lz4 1.10.0
+- [ ] M4 1.4.20
+- [ ] Make 4.4.1
+- [ ] Man-DB 2.13.1
+- [ ] Man-pages 6.15
+- [ ] MarkupSafe 3.0.2
+- [ ] Meson 1.8.3
+- [ ] MPC 1.3.1
+- [ ] MPFR 4.2.2
+- [ ] Ncurses 6.5-20250809
+- [ ] Ninja 1.13.1
+- [ ] OpenSSL 3.5.2
+- [ ] Packaging 25.0
+- [ ] Patch 2.8
+- [ ] Perl 5.42.0
+- [ ] Pkgconf 2.5.1
+- [ ] Procps 4.0.5
+- [ ] Psmisc 23.7
+- [ ] Readline 8.3
+- [ ] Sed 4.9
+- [ ] Setuptools 80.9.0
+- [ ] Shadow 4.18.0
+- [ ] Sysklogd 2.7.2
+- [ ] Systemd 257.8
+- [ ] Systemd Man Pages 257.8
+- [ ] SysVinit 3.14
+- [ ] Tar 1.35
+- [ ] Tcl 8.6.16
+- [ ] Tcl Documentation 8.6.16
+- [ ] Texinfo 7.2
+- [ ] Time Zone Data 2025b
+- [ ] Udev-lfs Tarball udev-lfs-20230818
+- [ ] Util-linux 2.41.1
+- [ ] Vim 9.1.1629
+- [ ] Wheel 0.46.1
+- [ ] XML::Parser 2.47
+- [ ] Xz Utils 5.8.1
+- [ ] Zlib 1.3.1
+- [ ] Zstd 1.5.7
