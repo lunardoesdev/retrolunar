@@ -7,7 +7,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Acl 2.3.2
 - [x] Attr 2.5.2
 - [x] Autoconf 2.72
-- [ ] Automake 1.18.1
+- [x] Automake 1.18.1
 - [ ] Bash 5.3
 - [ ] Bc 7.0.3
 - [ ] Binutils 2.45
