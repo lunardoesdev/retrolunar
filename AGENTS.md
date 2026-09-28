@@ -114,12 +114,32 @@ return recipe({
   `curl -C -`. Mirrors: `|| curl ... mirror` on the same line.
 - Unpack to `src/`, then `mkdir -p $OUT/<name>` + `cp -r src/* $OUT/<name>/`.
   `@source` never compiles — it only stages sources.
-- No checksums (project decision). Prefer release tarballs over git, but
-  git is allowed: `if [ ! -d src ]; then git clone --depth=1 --branch
-  "$tag" "$git" src; fi` (fields `git`/`tag` become shell vars; see
-  `packages/python/source.lua`).
-- Tarballs missing git submodules (protobuf, onnx) are unusable — check
-  for submodule content before writing the recipe.
+- No checksums (project decision).
+- Tarballs are preferred, but `git clone` is a first-class source too —
+  use it whenever upstream has no usable tarball (only git tags) or the
+  tarball is known-incomplete (missing git submodules, like protobuf or
+  onnx historically were). Pattern (fields `git`/`tag` become shell vars
+  via the emitter, see `packages/python/source.lua` which was fetch-by-git
+  from the start):
+  ```lua
+  return recipe({
+      version = "3.14.7",
+      git = "https://github.com/python/cpython",
+      tag = "v3.14.7",
+      build = [[
+          if [ ! -d src ]; then
+            git clone --depth=1 --branch "$tag" "$git" src
+          fi
+          mkdir -p $OUT/python
+          cp -r src/* $OUT/python/
+      ]]
+  })
+  ```
+  Add `--recursive` when the build needs submodule content
+  (`git clone --depth=1 --recursive --branch "$tag" "$git" src`).
+  Guard with `if [ ! -d src ]` so re-runs are idempotent (same role as
+  the `if [ ! -f dl/... ]` tarball guard). Shallow (`--depth=1`) always —
+  full history is never needed for a build.
 
 ## Writing a build recipe (`generic.lua`)
 
