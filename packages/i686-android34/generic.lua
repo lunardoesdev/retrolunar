@@ -71,6 +71,10 @@ return system({
         AUTOCONF_CONFIGURE_FLAGS="--host=i686-linux-android --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
+        # Autoconf probes link a test program and run it, which cannot work
+        # while cross compiling. Bionic defines these as inline functions.
+        export ac_cv_func_ffsl=yes
+        export gl_cv_func_strcasecmp_works=yes
         CMAKE_TOOLCHAIN_FILE="$SYSDIR/i686-linux-android34-toolchain.cmake"
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"

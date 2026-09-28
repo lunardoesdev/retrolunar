@@ -174,12 +174,18 @@ Rules:
 - `require("dep")` inherits your system; `require("dep@sys")` pins one
   (explicit always wins). `require("ownname@source")` pulls your sources,
   copied from `$NESTDIR/source/<name>/` (not `$OUT`).
-- Keep `generic.lua` system-neutral. Put target-only flags and workarounds in a
-  `packages/<name>/<sys>.lua` override for every supported system that needs
-  them; do not leak Android-specific behavior into the generic fallback. If
-  several targets share the same special recipe, their short system-specific
-  files may delegate to a clearly named package-local module such as
-  `android.lua` instead of duplicating the recipe body.
+- Keep `generic.lua` system-neutral. Any flag, cache answer, or workaround
+  that is only correct for one target belongs in `packages/<name>/<sys>.lua`,
+  added for every supported system that needs it — never in the generic
+  fallback. If several systems need the same package-specific build, the short
+  `<sys>.lua` files may delegate to a clearly named package-local module such
+  as `android.lua` instead of duplicating the recipe body.
+- When a rule describes the target system rather than one package (a libc
+  fact, an Autoconf cache answer, a toolchain quirk), put it in
+  `packages/<sys>/generic.lua` next to the other environment variables, so
+  every package inherits it. Keep such lines commented with the reason.
+  Examples: Android systems export `ac_cv_func_ffsl=yes` because Bionic
+  defines `ffsl` inline and Autoconf's link probe cannot see it.
 - Build-system flags come from the system, never hardcoded:
   `$CMAKE_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$MESON_FLAGS`.
   Search flags (`CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_*`) also come from the
