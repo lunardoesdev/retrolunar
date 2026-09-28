@@ -29,7 +29,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] GDBM 1.26
 - [ ] Gettext 0.26
 - [ ] Glibc 2.42 (blocked: it is a libc; the NDK sysroot is bionic and has no glibc cross sysroot)
-- [ ] GMP 6.3.0
+- [x] GMP 6.3.0
 - [x] Gperf 3.3
 - [ ] Grep 3.12
 - [ ] Groff 1.23.0
