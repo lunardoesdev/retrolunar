@@ -1,3 +1,4 @@
+require("attr")
 require("acl@source")
 
 return recipe({

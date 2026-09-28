@@ -4,8 +4,8 @@ Checklist based on the [Linux From Scratch 12.4, Chapter 3.2: All Packages](http
 
 Packages already in this repository remain on this list as candidates for version or build-script updates. Do not filter the list to only packages that are currently missing.
 
-- [ ] Acl 2.3.2
-- [ ] Attr 2.5.2
+- [x] Acl 2.3.2
+- [x] Attr 2.5.2
 - [ ] Autoconf 2.72
 - [ ] Automake 1.18.1
 - [ ] Bash 5.3

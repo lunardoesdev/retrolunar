@@ -50,13 +50,14 @@ return system({
         # ancient zlib.h in the sysroot instead of ours.
         # -isystem $SYSROOT/usr/include must stay C-only: on C++ it
         # reorders libc++ before its own C headers and breaks <cstdint>.
-        # libvpx C++ files get the sysroot via --sysroot instead.
+        CPPFLAGS="-I$PREFIX/include"
         CFLAGS="-O2 -fPIC"
         CFLAGS="$CFLAGS -I$PREFIX/include"
         CFLAGS="$CFLAGS -DANDROID -isystem $SYSROOT/usr/include"
         CXXFLAGS="-O2 -fPIC"
         CXXFLAGS="$CXXFLAGS -I$PREFIX/include"
         CXXFLAGS="$CXXFLAGS -DANDROID"
+        export CPPFLAGS CFLAGS CXXFLAGS
         # Kept empty on purpose: rust links via RUSTFLAGS below, and a
         # global -L would leak host-style rpath flags into cargo.
         LDFLAGS="-L$PREFIX/lib"
