@@ -25,7 +25,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Flex 2.6.4 (blocked: cross build selects an incomplete realloc replacement)
 - [x] Flit-core 3.12.0 (module only; no dist-info without host pip)
 - [ ] Gawk 5.3.2 (blocked: needs nl_langinfo, Bionic exposes it at API 26)
-- [ ] GCC 15.2.0
+- [ ] GCC 15.2.0 (blocked: LFS builds it in three cross-bootstrap passes; one package = one build here)
 - [ ] GDBM 1.26
 - [ ] Gettext 0.26
 - [ ] Glibc 2.42
