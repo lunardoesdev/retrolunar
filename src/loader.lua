@@ -417,11 +417,12 @@ do
           end
         end
       end
-      -- Staged .pc files bake $OUT paths; $OUT is a per-block mktemp dir,
-      -- so rewrite textually to $PREFIX. Pure sh string ops, no sed.
-      out[#out + 1] = '  for _pc in "$OUT"/lib/pkgconfig/*.pc'
-        .. ' "$OUT"/share/pkgconfig/*.pc; do\n'
-      out[#out + 1] = '    [ -f "$_pc" ] || continue\n'
+      -- Staged .pc and libtool .la files bake $OUT paths; $OUT is a
+      -- per-block mktemp dir, so rewrite textually to $PREFIX. Pure sh
+      -- string ops, no sed.
+      out[#out + 1] = '  for _fix in "$OUT"/lib/pkgconfig/*.pc'
+        .. ' "$OUT"/share/pkgconfig/*.pc "$OUT"/lib/*.la; do\n'
+      out[#out + 1] = '    [ -f "$_fix" ] || continue\n'
       out[#out + 1] = '    while IFS= read -r _line || [ -n "$_line" ]; do\n'
       out[#out + 1] = '      case "$_line" in\n'
       out[#out + 1] = '        *"$OUT"*) printf "%s\\n" "$_line"'
@@ -429,8 +430,8 @@ do
         .. ' \'{ gsub(o, p); print }\'' .. ';;\n'
       out[#out + 1] = '        *) printf "%s\\n" "$_line";;\n'
       out[#out + 1] = '      esac\n'
-      out[#out + 1] = '    done < "$_pc" > "$_pc.fixed"'
-        .. ' && mv "$_pc.fixed" "$_pc"\n'
+      out[#out + 1] = '    done < "$_fix" > "$_fix.fixed"'
+        .. ' && mv "$_fix.fixed" "$_fix"\n'
       out[#out + 1] = '  done\n'
       out[#out + 1] = '  mkdir -p "$NESTDIR/' .. sys .. '"\n'
       out[#out + 1] = '  cp -rf "$OUT"/. "$NESTDIR/' .. sys .. '/"\n'
