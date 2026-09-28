@@ -13,7 +13,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Binutils 2.45 (gprofng disabled; Android 24 lacks pthread cancellation APIs)
 - [x] Bison 3.8.2
 - [x] Bzip2 1.0.8
-- [ ] Coreutils 9.7
+- [x] Coreutils 9.7
 - [ ] DejaGNU 1.6.3
 - [ ] Diffutils 3.12
 - [ ] E2fsprogs 1.47.3
