@@ -247,6 +247,14 @@ ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
 - When asked to add package(s), implement them and run their build on one
   suitable provided system. Preserve `./nest` and reuse its successful
   outputs; do not delete it or force dependency rebuilds unless necessary.
+- When asked to update package(s), update exactly the requested scope. Check
+  each package's latest stable upstream release, then update its version,
+  source URL or git tag, and any build recipe details that changed. Preserve
+  existing system support; change system-specific recipes only when needed,
+  and leave unrelated packages and systems untouched. If an upstream release
+  cannot be used on the supported systems, report the concrete blocker.
+  Build each updated package on one suitable provided system, serially,
+  reusing `./nest` and avoiding dependency rebuilds unless necessary.
 - Use `jj` (not `git`) for repository commits. Commit each completed logical
   change promptly; package work gets one commit per package
   (`jj commit -m 'name version (what it is)'`). Keep `./nest` between builds
