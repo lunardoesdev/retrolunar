@@ -15,7 +15,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Bzip2 1.0.8
 - [x] Coreutils 9.7
 - [x] DejaGNU 1.6.3
-- [ ] Diffutils 3.12
+- [ ] Diffutils 3.12 (blocked: src/system.h needs <stdbit.h>, absent in the NDK)
 - [ ] E2fsprogs 1.47.3
 - [ ] Elfutils 0.193
 - [ ] Expat 2.7.1
