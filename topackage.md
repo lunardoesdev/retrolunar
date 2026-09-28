@@ -86,5 +86,5 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Wheel 0.46.1
 - [ ] XML::Parser 2.47
 - [ ] Xz Utils 5.8.1
-- [ ] Zlib 1.3.1
+- [x] Zlib 1.3.1
 - [ ] Zstd 1.5.7
