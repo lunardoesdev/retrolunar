@@ -11,5 +11,9 @@ return recipe({
         find . -name 'Makefile.in' | xargs touch
         make
         make install
+        # No upstream .pc ships: write one so readline's
+        # Requires.private: termcap resolves via pkg-config.
+        mkdir -p $OUT/lib/pkgconfig
+        printf 'prefix=%s\nexec_prefix=${prefix}\nlibdir=${exec_prefix}/lib\nincludedir=${prefix}/include\nName: termcap\nDescription: GNU termcap\nVersion: 1.3.1\nLibs: -L${libdir} -ltermcap\nCflags: -I${includedir}\n' "$PREFIX" > $OUT/lib/pkgconfig/termcap.pc
     ]]
 })

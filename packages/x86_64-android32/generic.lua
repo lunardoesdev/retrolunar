@@ -1,4 +1,4 @@
--- i686-linux-android24: NDK cross toolchain (from env.sh article).
+-- x86_64-linux-android32: NDK cross toolchain (from env.sh article).
 -- Installs go to $OUT (per-package stage dir, merged into
 -- $NESTDIR/<sys> on success); $PREFIX is the search path where earlier
 -- packages landed. cmake/meson files live next to this recipe and are
@@ -13,7 +13,7 @@ return system({
           printf '%s\n' "${_ndk_cand##*/}"
         done | sort -V | tail -1)"
         if [ -z "$_ndk_ver" ]; then
-          echo "i686-android24: no NDK under $ANDROID_HOME/ndk" >&2
+          echo "x86_64-android32: no NDK under $ANDROID_HOME/ndk" >&2
           unset _ndk_ver _ndk_cand
           exit 1
         fi
@@ -28,9 +28,9 @@ return system({
         export SYSROOT
 
         # --- toolchain: NDK clang wrappers + llvm binutils ---
-        # Wrappers already encode the API level (24).
-        CC="i686-linux-android24-clang"
-        CXX="i686-linux-android24-clang++"
+        # Wrappers already encode the API level (32).
+        CC="x86_64-linux-android32-clang"
+        CXX="x86_64-linux-android32-clang++"
         AR="llvm-ar"
         RANLIB="llvm-ranlib"
         LD="ld.lld"
@@ -68,35 +68,35 @@ return system({
         export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 
         # --- build-system defaults: install into $OUT, find in $PREFIX ---
-        AUTOCONF_CONFIGURE_FLAGS="--host=i686-linux-android --build=x86_64-pc-linux-gnu"
+        AUTOCONF_CONFIGURE_FLAGS="--host=x86_64-linux-android --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
-        CMAKE_TOOLCHAIN_FILE="$SYSDIR/i686-linux-android24-toolchain.cmake"
+        CMAKE_TOOLCHAIN_FILE="$SYSDIR/x86_64-linux-android32-toolchain.cmake"
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
         export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
-        MESON_CROSS_FILE="$SYSDIR/crossfile-i686-android24.ini"
+        MESON_CROSS_FILE="$SYSDIR/crossfile-x86_64-android32.ini"
         MESON_FLAGS="--prefix=$OUT"
         MESON_FLAGS="$MESON_FLAGS --cross-file $MESON_CROSS_FILE"
         export MESON_CROSS_FILE MESON_FLAGS
 
         # --- rust: target, linker, link path, cross pkg-config ---
         # cc-crate Vars mirror $CC/$CFLAGS for build scripts.
-        CARGO_BUILD_TARGET="i686-linux-android"
-        CARGO_TARGET_I686_LINUX_ANDROID_LINKER="$CC"
-        CARGO_TARGET_I686_LINUX_ANDROID_AR="$AR"
+        CARGO_BUILD_TARGET="x86_64-linux-android"
+        CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CC"
+        CARGO_TARGET_X86_64_LINUX_ANDROID_AR="$AR"
         RUSTFLAGS="-L $PREFIX/lib"
         PKG_CONFIG_ALLOW_CROSS="1"
-        CC_i686_linux_android="$CC"
-        CFLAGS_i686_linux_android="$CFLAGS"
-        CXX_i686_linux_android="$CXX"
-        CXXFLAGS_i686_linux_android="$CXXFLAGS"
-        export CARGO_BUILD_TARGET CARGO_TARGET_I686_LINUX_ANDROID_LINKER
-        export CARGO_TARGET_I686_LINUX_ANDROID_AR RUSTFLAGS
+        CC_x86_64_linux_android="$CC"
+        CFLAGS_x86_64_linux_android="$CFLAGS"
+        CXX_x86_64_linux_android="$CXX"
+        CXXFLAGS_x86_64_linux_android="$CXXFLAGS"
+        export CARGO_BUILD_TARGET CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER
+        export CARGO_TARGET_X86_64_LINUX_ANDROID_AR RUSTFLAGS
         export PKG_CONFIG_ALLOW_CROSS
-        export CC_i686_linux_android CFLAGS_i686_linux_android
-        export CXX_i686_linux_android CXXFLAGS_i686_linux_android
+        export CC_x86_64_linux_android CFLAGS_x86_64_linux_android
+        export CXX_x86_64_linux_android CXXFLAGS_x86_64_linux_android
     ]],
 })

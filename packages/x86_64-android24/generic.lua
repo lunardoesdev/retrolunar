@@ -28,7 +28,7 @@ return system({
         export SYSROOT
 
         # --- toolchain: NDK clang wrappers + llvm binutils ---
-        # Wrappers already encode the API level (21).
+        # Wrappers already encode the API level (24).
         CC="x86_64-linux-android24-clang"
         CXX="x86_64-linux-android24-clang++"
         AR="llvm-ar"
