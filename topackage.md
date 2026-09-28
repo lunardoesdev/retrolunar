@@ -28,7 +28,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] GCC 15.2.0 (blocked: LFS builds it in three cross-bootstrap passes; one package = one build here)
 - [x] GDBM 1.26
 - [ ] Gettext 0.26
-- [ ] Glibc 2.42
+- [ ] Glibc 2.42 (blocked: it is a libc; the NDK sysroot is bionic and has no glibc cross sysroot)
 - [ ] GMP 6.3.0
 - [x] Gperf 3.3
 - [ ] Grep 3.12
