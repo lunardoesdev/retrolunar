@@ -74,7 +74,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Sysklogd 2.7.2 (blocked: Bionic exposes getsubopt starting API 26; API24 logger compile fails)
 - [ ] Systemd 262 (LFS 257.8; blocked: upstream requires glibc >=2.34 or musl >=1.2.6, not Bionic)
 - [x] Systemd Man Pages 262 (LFS 257.8; latest systemd release)
-- [ ] SysVinit 3.14
+- [ ] SysVinit 3.14 (blocked: Android NDK sysroot lacks sys/kd.h required by init.c)
 - [ ] Tar 1.35
 - [x] Tcl 8.6.16
 - [ ] Tcl Documentation 8.6.16
