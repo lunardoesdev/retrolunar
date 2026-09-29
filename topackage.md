@@ -46,7 +46,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] LFS-Bootscripts 20250827 (matches LFS pin; data only, no binaries)
 - [ ] Libcap 2.76 (blocked: no reachable source. Upstream hosts releases on its Google Site, which does not respond from here, and kernel.org mirrors no libcap tarball (every libcap-2.7x.tar.gz path under pub/linux/libs/libcap returns 404), as do distfiles.gentoo.org, buildroot sources and the Debian pool. The GitHub project the LFS page points at no longer resolves either, so there is no git fallback to clone by tag. This also leaves IPRoute2's libcap dependency unmeetable)
 - [x] Libffi 3.8.0 (LFS 3.5.2; latest stable. libffi.so is "ELF 64-bit LSB shared object, ARM aarch64, for Android 24, built by NDK r28c"; static members are elf64-littleaarch64; pkg-config --modversion libffi reports 3.8.0)
-- [ ] Libpipeline 1.5.8
+- [x] Libpipeline 1.5.8 (matches LFS pin. libpipeline.so is "ELF 64-bit LSB shared object, ARM aarch64, for Android 24, built by NDK r28c"; pkg-config --modversion libpipeline reports 1.5.8. Note rctg.com now serves a parked-domain page, so the recipe uses the canonical download.savannah.gnu.org URL that LFS cites)
 - [ ] Libtool 2.5.4
 - [ ] Libxcrypt 4.4.38
 - [ ] Lz4 1.10.0
