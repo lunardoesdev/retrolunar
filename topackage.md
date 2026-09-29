@@ -37,7 +37,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Gzip 1.15 (LFS 1.14; latest stable)
 - [x] Iana-Etc 20260911 (LFS 20250807; latest stable; data only, no binaries)
 - [ ] Inetutils 2.8 (LFS 2.6; latest stable. Mostly builds: telnet/telnet links and is a real Android 24 aarch64 binary ("ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c"), after forcing <termios.h> for telnet/sys_bsd.c, which uses struct termios without including it (glibc pulls it in transitively, Bionic does not). BLOCKED on ifconfig: changeif.c:256 calls ether_hostton, and Bionic has neither that symbol (llvm-nm on libc.so shows only ether_aton/ether_aton_r/ether_ntoa/ether_ntoa_r) nor a header declaring it - glibc declares it in <netether.h>. Supplying it would mean patching upstream or shipping a shim, both forbidden)
-- [ ] Intltool 0.51.0
+- [ ] Intltool 0.51.0 (blocked: configure hard-requires the XML::Parser Perl module - "configure: error: XML::Parser perl module is required for intltool" - and no perl on this host has it, neither /usr/bin/perl 5.42.2 nor the nest's native perl 5.44.0. XML::Parser is itself blocked in this backlog. Note upstream's own download URL that LFS cites, launchpad.net/intltool/trunk/0.51.0, now returns a 502 and download.gnome.org only carries releases to 0.40, so the recipe fetches the unmodified 0.51.0 release tarball from Debian's pool mirror)
 - [ ] IPRoute2 6.16.0
 - [ ] Jinja2 3.1.6
 - [ ] Kbd 2.8.0
