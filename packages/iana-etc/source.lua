@@ -1,9 +1,9 @@
 return recipe({
-    version = "20250807",
+    version = "20260911",
     build = [[
         mkdir -p dl
         if [ ! -f dl/iana-etc.tar.gz ]; then
-          curl -fSL -C - -o dl/iana-etc.tar.gz "https://github.com/Mic92/iana-etc/releases/download/20250807/iana-etc-20250807.tar.gz"
+          curl -fSL -C - -o dl/iana-etc.tar.gz "https://github.com/Mic92/iana-etc/releases/download/20260911/iana-etc-20260911.tar.gz"
         fi
         rm -rf src
         mkdir -p src
