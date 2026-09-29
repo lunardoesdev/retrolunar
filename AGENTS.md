@@ -306,3 +306,15 @@ ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
   llama.cpp). `sfml` is X11-only, `raylib` uses removed NDK APIs.
 - No `jj`/`git` commands inside recipes; no network access at build time
   except `curl` in `source.lua` fetch blocks.
+- No emulation, ever: never run or test a target binary under QEMU (any
+  `qemu-user`/`qemu-aarch64`/`qemu-aarch64-static`), any other emulator,
+  VM or binary translator, or a `binfmt_misc` registration of one, and
+  never install QEMU to do it. This includes re-executing a build under
+  an emulator and letting a build shell out to the tools it just
+  cross-compiled (groff rendering its own doc examples is the case that
+  bites).
+- Verify cross-built artifacts statically, host-side: `file`, `readelf`,
+  `llvm-nm`, `llvm-objdump`, ELF machine and API-level checks, symbol
+  presence, headers and `.pc` files, `pkg-config --modversion`. When an
+  upstream test suite would only run on the target, skip it and say so
+  in the report instead of emulating it.
