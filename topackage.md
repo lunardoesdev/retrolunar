@@ -31,7 +31,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Glibc 2.42 (blocked: it is a libc; the NDK sysroot is bionic and has no glibc cross sysroot)
 - [x] GMP 6.3.0
 - [x] Gperf 3.3
-- [ ] Grep 3.12
+- [x] Grep 3.12
 - [ ] Groff 1.23.0
 - [ ] GRUB 2.12
 - [ ] Gzip 1.14
