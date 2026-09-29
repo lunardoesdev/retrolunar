@@ -45,7 +45,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Less 685 (LFS 679; latest stable. blocked: charset.c:432 calls nl_langinfo, which Bionic declares only inside __BIONIC_AVAILABILITY_GUARD(26) as __INTRODUCED_IN(26) in langinfo.h:97, so it is not declared at API 24. Same root cause that already blocks Gawk and Pkgconf in this backlog; the only fixes are raising the target API level or patching the call site, both out of scope here)
 - [x] LFS-Bootscripts 20250827 (matches LFS pin; data only, no binaries)
 - [ ] Libcap 2.76 (blocked: no reachable source. Upstream hosts releases on its Google Site, which does not respond from here, and kernel.org mirrors no libcap tarball (every libcap-2.7x.tar.gz path under pub/linux/libs/libcap returns 404), as do distfiles.gentoo.org, buildroot sources and the Debian pool. The GitHub project the LFS page points at no longer resolves either, so there is no git fallback to clone by tag. This also leaves IPRoute2's libcap dependency unmeetable)
-- [ ] Libffi 3.5.2
+- [x] Libffi 3.8.0 (LFS 3.5.2; latest stable. libffi.so is "ELF 64-bit LSB shared object, ARM aarch64, for Android 24, built by NDK r28c"; static members are elf64-littleaarch64; pkg-config --modversion libffi reports 3.8.0)
 - [ ] Libpipeline 1.5.8
 - [ ] Libtool 2.5.4
 - [ ] Libxcrypt 4.4.38
