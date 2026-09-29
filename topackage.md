@@ -27,7 +27,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Gawk 5.3.2 (blocked: needs nl_langinfo, Bionic exposes it at API 26)
 - [ ] GCC 15.2.0 (blocked: LFS builds it in three cross-bootstrap passes; one package = one build here)
 - [x] GDBM 1.26
-- [ ] Gettext 0.26
+- [ ] Gettext 0.26 (blocked: NDK hides iconv.h before API 28, so libtextstyle is built with HAVE_ICONV=0 and libtextstyle/lib/libtextstyle.sym.in:41 still exports iconv_ostream_create; ld.lld: version script assignment of 'global' to symbol 'iconv_ostream_create' failed: symbol not defined)
 - [ ] Glibc 2.42 (blocked: it is a libc; the NDK sysroot is bionic and has no glibc cross sysroot)
 - [x] GMP 6.3.0
 - [x] Gperf 3.3
