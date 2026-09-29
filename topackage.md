@@ -69,7 +69,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Psmisc 23.7 (blocked: Android cross link leaves rpl_malloc and rpl_realloc undefined)
 - [x] Readline 8.3
 - [x] Sed 4.10 (LFS 4.9; latest stable)
-- [ ] Setuptools 80.9.0
+- [x] Setuptools 84.0.0 (LFS 80.9.0; latest stable)
 - [ ] Shadow 4.18.0
 - [ ] Sysklogd 2.7.2
 - [ ] Systemd 257.8
