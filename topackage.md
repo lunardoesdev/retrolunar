@@ -83,7 +83,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Udev-lfs Tarball udev-lfs-20230818
 - [ ] Util-linux 2.41.1
 - [ ] Vim 9.1.1629
-- [ ] Wheel 0.46.1
+- [x] Wheel 0.48.0 (LFS 0.46.1; latest stable; module only, no dist-info)
 - [ ] XML::Parser 2.47
 - [ ] Xz Utils 5.8.1
 - [x] Zlib 1.3.1
