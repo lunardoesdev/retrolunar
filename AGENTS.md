@@ -212,9 +212,8 @@ Rules:
   NEVER `sed`, patches, `/dev/null`, or multi-job builds. Build serially:
   use `make -j1` or the build tool's equivalent single-job option. This
   keeps logs readable and ordering deterministic.
-  (Legacy violation: `packages/opencv/generic.lua` uses
-  `cmake --build build -j$(nproc ...)`; change it to one job before running
-  or otherwise touching it.)
+  (`packages/opencv/generic.lua` was the last recipe still using
+  `-j$(nproc ...)`; it now uses `cmake --build build --parallel 1`.)
 - Autotools timestamp guard after every `./configure` (tarball mtimes
   trigger `aclocal-1.17` re-runs we don't have):
   `touch aclocal.m4 configure config.h.in` +
