@@ -70,7 +70,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Readline 8.3
 - [x] Sed 4.10 (LFS 4.9; latest stable)
 - [x] Setuptools 84.0.0 (LFS 80.9.0; latest stable)
-- [ ] Shadow 4.18.0
+- [ ] Shadow 4.20.3 (blocked: Android Bionic lacks shadow.h required by configure)
 - [ ] Sysklogd 2.7.2
 - [ ] Systemd 257.8
 - [ ] Systemd Man Pages 257.8
