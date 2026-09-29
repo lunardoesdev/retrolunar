@@ -79,7 +79,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Tcl 8.6.16
 - [x] Tcl Documentation 8.6.18 (LFS 8.6.16; latest 8.6 maintenance docs)
 - [ ] Texinfo 7.3 (LFS 7.2; blocked: nested tta configure falls back to cc and cannot create executables)
-- [ ] Time Zone Data 2025b
+- [ ] Time Zone Data 2025b (blocked: the IANA 2025b release tarball omits files its own Makefile requires. Makefile:848 has `tzselect: tzselect.ksh version` and Makefile:586 lists tzselect.ksh and workman.sh, but neither file is in the tarball, so make stops with "No rule to make target 'tzselect.ksh', needed by 'tzselect'". This is the same class of upstream packaging defect as GRUB 2.14's missing libgcrypt-grub/src/misc.c, and it cannot be fixed without adding files to the tarball. Separately worth recording: compiling the zones runs zic, and the Makefile's ZIC variable must be pointed at the host zic via PATH, because otherwise it would run the ./zic it just built with the cross compiler, i.e. an aarch64 binary on this x86_64 host)
 - [ ] Udev-lfs Tarball udev-lfs-20230818
 - [ ] Util-linux 2.41.1
 - [ ] Vim 9.1.1629
