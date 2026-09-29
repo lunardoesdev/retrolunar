@@ -63,7 +63,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] OpenSSL 4.0.2 (LFS 3.5.2; latest stable release)
 - [x] Packaging 26.3 (LFS 25.0; latest stable; module only, no dist-info)
 - [x] Patch 2.8
-- [x] Perl 5.44.0 (latest stable; built for the NATIVE clang-native system as a static x86-64 perl, which is what a native package is supposed to be. A TARGET aarch64-android perl is still blocked: upstream's Android cross-build requires a reachable adb/ssh device, and none is available. Its baked-in @INC still names the build staging dir, so consumers must set PERL5LIB to the installed core_perl)
+- [x] Perl 5.44.0 (latest stable; built for the NATIVE clang-native system as a static x86-64 perl, which is what a native package is supposed to be. A TARGET aarch64-android perl is still blocked: upstream's Android cross-build requires a reachable adb/ssh device, and none is available. The module search paths are configured with -Dprivlib/-Darchlib/-Dsitelib/... pointing at $PREFIX rather than the $OUT staging dir, because perl bakes those absolute paths in with no relocation support; verified that the installed perl then finds ExtUtils::MakeMaker and runs xsubpp with NO PERL5LIB set, which was not true before)
 - [ ] Pkgconf 3.0.7 (blocked: Bionic introduced nl_langinfo in API 26; API24 compilation fails)
 - [ ] Procps 4.0.7 (blocked: Clang 19 rejects FLT_MIN token-pasting in src/ps/common.h:101)
 - [ ] Psmisc 23.7 (blocked: Android cross link leaves rpl_malloc and rpl_realloc undefined)
