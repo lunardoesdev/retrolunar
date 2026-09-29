@@ -75,7 +75,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Systemd 262 (LFS 257.8; blocked: upstream requires glibc >=2.34 or musl >=1.2.6, not Bionic)
 - [x] Systemd Man Pages 262 (LFS 257.8; latest systemd release)
 - [ ] SysVinit 3.14 (blocked: Android NDK sysroot lacks sys/kd.h required by init.c)
-- [ ] Tar 1.35
+- [ ] Tar 1.35 (blocked: Bionic guards mktime_z until API 35; target API24 cannot compile it)
 - [x] Tcl 8.6.16
 - [ ] Tcl Documentation 8.6.16
 - [ ] Texinfo 7.2
