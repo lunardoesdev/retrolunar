@@ -63,7 +63,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] OpenSSL 4.0.2 (LFS 3.5.2; latest stable release)
 - [x] Packaging 26.3 (LFS 25.0; latest stable; module only, no dist-info)
 - [x] Patch 2.8
-- [ ] Perl 5.42.0
+- [ ] Perl 5.44.0 (blocked: upstream Android cross-build requires a reachable adb/ssh target; none available)
 - [ ] Pkgconf 2.5.1
 - [ ] Procps 4.0.5
 - [ ] Psmisc 23.7
