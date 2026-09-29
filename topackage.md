@@ -62,7 +62,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Ninja 1.13.2 (blocked: Android 24 NDK hides posix_spawn APIs introduced in API 28)
 - [x] OpenSSL 4.0.2 (LFS 3.5.2; latest stable release)
 - [x] Packaging 26.3 (LFS 25.0; latest stable; module only, no dist-info)
-- [ ] Patch 2.8
+- [x] Patch 2.8
 - [ ] Perl 5.42.0
 - [ ] Pkgconf 2.5.1
 - [ ] Procps 4.0.5
