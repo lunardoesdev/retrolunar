@@ -51,7 +51,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Libxcrypt 4.4.38
 - [x] Lz4 1.10.0 (matches LFS pin. bin/lz4 is "ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c"; lib/liblz4.a members are elf64-littleaarch64; bin/lz4c also installed)
 - [x] M4 1.4.20
-- [ ] Make 4.4.1
+- [x] Make 4.4.1 (matches LFS pin. bin/make is "ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c")
 - [ ] Man-DB 2.13.1
 - [ ] Man-pages 6.15
 - [ ] MarkupSafe 3.0.2
