@@ -49,7 +49,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Libpipeline 1.5.8 (matches LFS pin. libpipeline.so is "ELF 64-bit LSB shared object, ARM aarch64, for Android 24, built by NDK r28c"; pkg-config --modversion libpipeline reports 1.5.8. Note rctg.com now serves a parked-domain page, so the recipe uses the canonical download.savannah.gnu.org URL that LFS cites)
 - [ ] Libtool 2.5.4 (matches LFS pin. blocked: doc/libtool.1 is built by help2man, which is not present on this host, and libtool's configure offers no flag to skip the manual - --disable-ltdl-install and --disable-shared are the only relevant ones. The autotools side did get sorted out: this recipe's timestamp guard has to touch config.status and libtool after aclocal.m4, otherwise config.status --recheck re-runs configure and resets the timestamps, which sends make looking for aclocal-1.17 that the prefix does not have. help2man is a perl script and could be supplied as a native package, but adding one is out of scope for this list)
 - [ ] Libxcrypt 4.4.38
-- [ ] Lz4 1.10.0
+- [x] Lz4 1.10.0 (matches LFS pin. bin/lz4 is "ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c"; lib/liblz4.a members are elf64-littleaarch64; bin/lz4c also installed)
 - [x] M4 1.4.20
 - [ ] Make 4.4.1
 - [ ] Man-DB 2.13.1
