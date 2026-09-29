@@ -32,7 +32,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] GMP 6.3.0
 - [x] Gperf 3.3
 - [x] Grep 3.12
-- [ ] Groff 1.23.0
+- [ ] Groff 1.24.2 (LFS 1.23.0; latest stable; blocked: doc/doc.am:392 renders doc/webpage.ps with the just-built groff (Makefile.am:497 GROFFBIN), and make install wants that file, so the build cannot finish without executing an aarch64 binary on the x86_64 host)
 - [ ] GRUB 2.12
 - [ ] Gzip 1.14
 - [ ] Iana-Etc 20250807
