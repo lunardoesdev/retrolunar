@@ -78,7 +78,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Tar 1.35 (blocked: Bionic guards mktime_z until API 35; target API24 cannot compile it)
 - [x] Tcl 8.6.16
 - [x] Tcl Documentation 8.6.18 (LFS 8.6.16; latest 8.6 maintenance docs)
-- [ ] Texinfo 7.2
+- [ ] Texinfo 7.3 (LFS 7.2; blocked: nested tta configure falls back to cc and cannot create executables)
 - [ ] Time Zone Data 2025b
 - [ ] Udev-lfs Tarball udev-lfs-20230818
 - [ ] Util-linux 2.41.1
