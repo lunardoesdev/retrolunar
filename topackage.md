@@ -60,7 +60,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] MPFR 4.2.2
 - [x] Ncurses 6.6 (LFS 6.5-20250809 tarball returns 404; current stable used)
 - [ ] Ninja 1.13.2 (blocked: Android 24 NDK hides posix_spawn APIs introduced in API 28)
-- [ ] OpenSSL 3.5.2
+- [x] OpenSSL 4.0.2 (LFS 3.5.2; latest stable release)
 - [ ] Packaging 25.0
 - [ ] Patch 2.8
 - [ ] Perl 5.42.0
