@@ -2,9 +2,10 @@ require("man-pages@source")
 
 return recipe({
     build = [[
-        # Pure data: pre-formatted roff sources, installed as-is the
-        # same way the systemd man page tarball is staged.
+        cp -r $NESTDIR/source/man-pages/* .
+        # Pure data: the tarball ships pre-formatted roff manuals, so they are
+        # staged straight into the man directories.
         mkdir -p $OUT/share/man
-        cp -r $NESTDIR/source/man-pages/* $OUT/share/man/
+        cp -r man $OUT/share/man/
     ]]
 })
