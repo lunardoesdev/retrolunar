@@ -33,7 +33,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Gperf 3.3
 - [x] Grep 3.12
 - [ ] Groff 1.24.2 (LFS 1.23.0; latest stable; blocked: doc/doc.am:392 renders doc/webpage.ps with the just-built groff (Makefile.am:497 GROFFBIN), and make install wants that file, so the build cannot finish without executing an aarch64 binary on the x86_64 host)
-- [ ] GRUB 2.12
+- [ ] GRUB 2.14 (LFS 2.12; latest stable; blocked: 2.14 tarball omits grub-core/lib/libgcrypt-grub/src/misc.c and defines no `gcry` module to compile it, so the new pubkey module's rsa-common.c references _gcry_log_printmpi, which no module defines; grub-core/Makefile:57254 moddep.lst then fails with "_gcry_log_printmpi in pubkey is not defined". Not fixable without patching upstream sources)
 - [ ] Gzip 1.14
 - [ ] Iana-Etc 20250807
 - [ ] Inetutils 2.6
