@@ -58,7 +58,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Meson 1.8.3
 - [x] MPC 1.3.1
 - [x] MPFR 4.2.2
-- [ ] Ncurses 6.5-20250809
+- [x] Ncurses 6.6 (LFS 6.5-20250809 tarball returns 404; current stable used)
 - [ ] Ninja 1.13.1
 - [ ] OpenSSL 3.5.2
 - [ ] Packaging 25.0
