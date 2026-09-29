@@ -77,7 +77,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] SysVinit 3.14 (blocked: Android NDK sysroot lacks sys/kd.h required by init.c)
 - [ ] Tar 1.35 (blocked: Bionic guards mktime_z until API 35; target API24 cannot compile it)
 - [x] Tcl 8.6.16
-- [ ] Tcl Documentation 8.6.16
+- [x] Tcl Documentation 8.6.18 (LFS 8.6.16; latest 8.6 maintenance docs)
 - [ ] Texinfo 7.2
 - [ ] Time Zone Data 2025b
 - [ ] Udev-lfs Tarball udev-lfs-20230818
