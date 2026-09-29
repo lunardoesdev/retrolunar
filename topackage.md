@@ -72,7 +72,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Setuptools 84.0.0 (LFS 80.9.0; latest stable)
 - [ ] Shadow 4.20.3 (blocked: Android Bionic lacks shadow.h required by configure)
 - [ ] Sysklogd 2.7.2 (blocked: Bionic exposes getsubopt starting API 26; API24 logger compile fails)
-- [ ] Systemd 257.8
+- [ ] Systemd 262 (LFS 257.8; blocked: upstream requires glibc >=2.34 or musl >=1.2.6, not Bionic)
 - [ ] Systemd Man Pages 257.8
 - [ ] SysVinit 3.14
 - [ ] Tar 1.35
