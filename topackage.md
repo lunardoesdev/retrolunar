@@ -54,7 +54,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Make 4.4.1 (matches LFS pin. bin/make is "ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c")
 - [ ] Man-DB 2.13.1
 - [x] Man-pages 6.15 (matches LFS pin; data only, no binaries. Installed under share/man/man/ - man1 16, man3 1711, man5 158, man7 171, man8 11 pages. The tarball's top-level man1/man3/... entries are symlinks into man/, so only man/ is copied)
-- [ ] MarkupSafe 3.0.2
+- [x] MarkupSafe 3.0.3 (LFS 3.0.2; latest stable; pure Python, no dist-info. The optional _speedups C accelerator is NOT compiled - _speedups.c ships as source but no .so is produced - so the module uses its _native.py fallback)
 - [x] Meson 1.12.1 (LFS 1.8.3; latest stable; pure Python, module + bin/meson launcher, no dist-info)
 - [x] MPC 1.3.1
 - [x] MPFR 4.2.2
