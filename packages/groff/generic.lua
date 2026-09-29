@@ -1,5 +1,12 @@
 require("groff@source")
 
+-- Known blocker on every cross system: groff renders its own manual and
+-- its example documents with the groff it has just built
+-- (Makefile.am:497, GROFFBIN = $(abs_top_builddir)/groff, used by
+-- doc/doc.am:39 DOC_GROFF in the rules at doc/doc.am:173-174 and
+-- doc/doc.am:392-397). `make install` wants those rendered files
+-- (doc/doc.am:130, :139, :178), so the build cannot finish without
+-- executing an aarch64 binary on the x86_64 build host.
 return recipe({
     build = [[
         cp -r $NESTDIR/source/groff/* .
@@ -12,12 +19,6 @@ return recipe({
         # netpbm tools (xpmtoppm/pnmtops), which are not in the nest.
         # Refresh the timestamp so the shipped file is used as-is.
         touch doc/gnu.eps
-        # doc/webpage.ps and doc/grnexmpl.ps are PostScript renderings
-        # of the example documents; generating them means running the
-        # freshly cross-compiled troff, which cannot execute on the build
-        # host. The example sources (doc/pic.ms, doc/me-revisions) are
-        # installed, so pre-touch the renderings to skip that step.
-        touch doc/webpage.ps doc/grnexmpl.ps
         touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' | xargs touch
         make
