@@ -84,7 +84,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Util-linux 2.41.1
 - [ ] Vim 9.1.1629
 - [x] Wheel 0.48.0 (LFS 0.46.1; latest stable; module only, no dist-info)
-- [ ] XML::Parser 2.47 (blocked: XS module needs a target perl to run Makefile.PL; the nest has no perl package and Perl itself is blocked, so the only perl is the host x86_64 one, which would emit an x86_64 .so)
+- [ ] XML::Parser 2.47 (not yet built. Corrected: a host perl running Makefile.PL is the correct cross-build mechanism for an XS module, not a defect. Verified on this host: xsubpp under /usr/bin/perl 5.42.2 generates Expat.c (70888 bytes) and that C compiles with aarch64-linux-android24-clang to "ELF 64-bit LSB relocatable, ARM aarch64". Real remaining gap: a native perl package does not exist yet, and a host perl's CORE headers do not compile for Android - perl.h:8073 redefines union semun, which Bionic's sys/sem.h:46 already defines, and reentr.h includes glibc-only crypt.h/shadow.h. Both live in the perl CORE headers, so they need a purpose-built perl@native rather than a recipe flag)
 - [ ] Xz Utils 5.8.1
 - [x] Zlib 1.3.1
 - [ ] Zstd 1.5.7
