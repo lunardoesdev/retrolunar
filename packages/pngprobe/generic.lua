@@ -5,8 +5,6 @@ return recipe({
     version = "0.1.0",
     libpng_sys = "1.1.11",
     build = [[
-        rm -f "$PREFIX/lib/libxcadd.a" "$PREFIX/lib/pkgconfig/xcadd.pc"
-        rm -rf "$PREFIX/include/xcadd"
         mkdir -p src
         cat > Cargo.toml <<EOF
         [package]
