@@ -68,7 +68,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Procps 4.0.7 (blocked: Clang 19 rejects FLT_MIN token-pasting in src/ps/common.h:101)
 - [ ] Psmisc 23.7 (blocked: Android cross link leaves rpl_malloc and rpl_realloc undefined)
 - [x] Readline 8.3
-- [ ] Sed 4.9
+- [x] Sed 4.10 (LFS 4.9; latest stable)
 - [ ] Setuptools 80.9.0
 - [ ] Shadow 4.18.0
 - [ ] Sysklogd 2.7.2
