@@ -1,9 +1,9 @@
 return recipe({
-    version = "1.9.1",
+    version = "1.12.1",
     build = [[
         mkdir -p dl
         if [ ! -f dl/meson.tar.gz ]; then
-          curl -fSL -C - -o dl/meson.tar.gz "https://github.com/mesonbuild/meson/releases/download/1.9.1/meson-1.9.1.tar.gz"
+          curl -fSL -C - -o dl/meson.tar.gz "https://pypi.org/packages/source/m/meson/meson-1.12.1.tar.gz"
         fi
         rm -rf src
         mkdir -p src
