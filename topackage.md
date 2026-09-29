@@ -64,7 +64,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Packaging 26.3 (LFS 25.0; latest stable; module only, no dist-info)
 - [x] Patch 2.8
 - [ ] Perl 5.44.0 (blocked: upstream Android cross-build requires a reachable adb/ssh target; none available)
-- [ ] Pkgconf 2.5.1
+- [ ] Pkgconf 3.0.7 (blocked: Bionic introduced nl_langinfo in API 26; API24 compilation fails)
 - [ ] Procps 4.0.5
 - [ ] Psmisc 23.7
 - [x] Readline 8.3
