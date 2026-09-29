@@ -303,9 +303,23 @@ do
     end
     nestdir = abspath(nestdir or '.')
     pkgdir = abspath(pkgdir or '.')
+    local native_system = _G.DEFAULT_SYSTEM
+    if type(native_system) ~= 'string' or native_system == '' then
+      error('retrolunar: DEFAULT_SYSTEM not set', 2)
+    end
     local out = { '#!/bin/sh\nset -eu\n' }
     out[#out + 1] = 'NESTDIR=' .. sh_sq(nestdir) .. '\n'
     out[#out + 1] = 'PACKAGEDIR=' .. sh_sq(pkgdir) .. '\n'
+    out[#out + 1] = 'mkdir -p "$NESTDIR"\n'
+    out[#out + 1] = 'if ! command -v flock >/dev/null 2>&1; then\n'
+    out[#out + 1] = '  echo "retrolunar: flock is required (install util-linux)" >&2\n'
+    out[#out + 1] = '  exit 1\n'
+    out[#out + 1] = 'fi\n'
+    out[#out + 1] = 'exec 9>>"$NESTDIR/.retrolunar.lock"\n'
+    out[#out + 1] = 'if ! flock -n 9; then\n'
+    out[#out + 1] = '  echo "retrolunar: another build script is using NESTDIR: $NESTDIR" >&2\n'
+    out[#out + 1] = '  exit 1\n'
+    out[#out + 1] = 'fi\n'
     out[#out + 1] = 'mkdir -p "$NESTDIR/tmp"\n'
     for _, e in ipairs(queue) do
       local name = e.name or e.file or 'unknown'
@@ -392,6 +406,10 @@ do
           end
         end
       end
+      out[#out + 1] = '  NATIVE_PREFIX="$NESTDIR"/' .. sh_sq(native_system) .. '\n'
+      out[#out + 1] = '  PATH="$NATIVE_PREFIX/bin${PATH:+:$PATH}"\n'
+      out[#out + 1] = '  LD_LIBRARY_PATH="$NATIVE_PREFIX/lib:$NATIVE_PREFIX/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\n'
+      out[#out + 1] = '  export NATIVE_PREFIX PATH LD_LIBRARY_PATH\n'
       local build = e.build
       if type(build) == 'string' then
         -- Recipe fields (version/git/tag/...) become shell vars so

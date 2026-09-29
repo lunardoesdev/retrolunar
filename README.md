@@ -6,7 +6,8 @@ cross-compiled for Android — into isolated per-system prefixes.
 
 ## Quick start
 
-Prerequisites: `meson`, `ninja`, a C compiler, `curl`, `git`, `sh`.
+Prerequisites: `meson`, `ninja`, a C compiler, `curl`, `git`, `sh`, and
+`flock` from util-linux.
 For Android targets: an Android SDK with an NDK (`ANDROID_HOME`).
 
 ```sh
@@ -70,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install host tools
         run: sudo apt-get update && sudo apt-get install -y
-          meson ninja-build curl git pkg-config cmake autoconf make
+          meson ninja-build curl git pkg-config cmake autoconf make util-linux
       - name: Install Android SDK + NDK
         uses: android-actions/setup-android@v3
       - name: Build retrolunar

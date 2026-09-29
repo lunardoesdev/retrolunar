@@ -1,4 +1,4 @@
-require("gperf@clang-native")
+require("gperf@native")
 require("bison@source")
 
 return {
@@ -8,7 +8,7 @@ return {
         touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' | xargs touch
         # Bison generates build-time tables with a native gperf executable.
-        PATH="$NESTDIR/clang-native/bin:$PATH" make -j1
+        make -j1
         make install
     ]]
 }

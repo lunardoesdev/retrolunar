@@ -81,15 +81,26 @@ Reserved keys (`build`, `file`, `dir`, `sys`, `system`, `name`) are skipped.
 
 Per queued package, one `if fresh ... else ... fi` block:
 
+- Before freshness checks or package work, create the NESTDIR and take a
+  nonblocking `flock` on persistent `$NESTDIR/.retrolunar.lock` (FD 9).
+  `flock` from util-linux is a prerequisite; a concurrent script using the
+  same NESTDIR fails fast. Keep the file (normally empty) after unlocking:
+  kernel-managed advisory locking releases on exit, failure, or power loss,
+  so there is no trap-based stale-lock cleanup.
 - Freshness: stamp `$NESTDIR/<sys>/.retrolunar-<name>` newer than the
   recipe file, the system file, and the system dir. Stale by any single
   `-nt` comparison means rebuild; missing stamp means build.
-- Block prologue: system `setup` fragment, then
-  `WORK=$(mktemp -d ...)` + `OUT=$(mktemp -d ...)` under `$NESTDIR/tmp`,
-  `trap 'rm -rf "$WORK" "$OUT"' EXIT`, `cd "$WORK"`,
+- Block prologue: `WORK=$(mktemp -d ...)` + `OUT=$(mktemp -d ...)` under
+  `$NESTDIR/tmp`, `trap 'rm -rf "$WORK" "$OUT"' EXIT`, `cd "$WORK"`,
   `PREFIX="$NESTDIR/<sys>"`, `RECIPEDIR="$PACKAGEDIR/<name>"`,
   `SYSDIR` pointing at the system dir, all exported with
   `PACKAGEDIR NESTDIR RECIPEDIR OUT PREFIX SYSDIR`.
+- Then the system `setup` fragment runs. After setup, every block derives
+  `NATIVE_PREFIX="$NESTDIR/<DEFAULT_SYSTEM>"`, exports it, prepends
+  `$NATIVE_PREFIX/bin` to PATH, and prepends `$NATIVE_PREFIX/lib` and
+  `$NATIVE_PREFIX/lib64` to `LD_LIBRARY_PATH`, preserving existing values.
+  This exposes native helper executables/shared libraries without changing
+  `PKG_CONFIG_*` or any system setup.
 - Build body verbatim (heredoc `EOF` terminators normalized to column 0).
 - Staged `.pc` files get `$OUT` paths rewritten to `$PREFIX` via
   `while read` + `awk` (no `sed -i`).
@@ -98,10 +109,9 @@ Per queued package, one `if fresh ... else ... fi` block:
 
 `PREFIX` is the search path (earlier packages), `OUT` the install target:
 recipes pass `-DCMAKE_INSTALL_PREFIX=$OUT` / `--prefix=$OUT` and read
-deps from `$PREFIX`. Both plus `RECIPEDIR`/`PACKAGEDIR`/`NESTDIR` are
-exported shell vars, never baked absolute paths (except the script
-header, which absolutizes `--nest`/`--packages` so the script is
-cwd-independent).
+deps from `$PREFIX`. These plus `RECIPEDIR`/`PACKAGEDIR`/`NESTDIR` are
+exported shell vars, never baked absolute paths (except the script header,
+which absolutizes `--nest`/`--packages` so the script is cwd-independent).
 
 ## Writing a source recipe (`source.lua`)
 
