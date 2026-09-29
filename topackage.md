@@ -55,7 +55,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Man-DB 2.13.1
 - [ ] Man-pages 6.15
 - [ ] MarkupSafe 3.0.2
-- [ ] Meson 1.8.3
+- [x] Meson 1.12.1 (LFS 1.8.3; latest stable; pure Python, module + bin/meson launcher, no dist-info)
 - [x] MPC 1.3.1
 - [x] MPFR 4.2.2
 - [x] Ncurses 6.6 (LFS 6.5-20250809 tarball returns 404; current stable used)
