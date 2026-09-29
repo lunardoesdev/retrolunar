@@ -84,7 +84,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Util-linux 2.41.1
 - [ ] Vim 9.1.1629
 - [x] Wheel 0.48.0 (LFS 0.46.1; latest stable; module only, no dist-info)
-- [ ] XML::Parser 2.47
+- [ ] XML::Parser 2.47 (blocked: XS module needs a target perl to run Makefile.PL; the nest has no perl package and Perl itself is blocked, so the only perl is the host x86_64 one, which would emit an x86_64 .so)
 - [ ] Xz Utils 5.8.1
 - [x] Zlib 1.3.1
 - [ ] Zstd 1.5.7
