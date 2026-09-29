@@ -44,7 +44,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Kmod 34 (blocked: two glibc-isms that Bionic does not provide, with no meson fallback check. shared/util.c:383 calls get_current_dir_name and libkmod/libkmod-index.c:224 calls fread_unlocked; llvm-nm on Bionic's libc.so finds neither symbol and no NDK header declares them. kmod's meson.build has no HAVE_ test or -D option to avoid them, so the only fix is guarding those call sites in the upstream source, which the no-patch rule forbids. Note Meson 1.12.1 was added to the prefix as its prerequisite, and kmod itself is fetched from the v34 git tag because kernel.org carries no kmod release tarball)
 - [ ] Less 685 (LFS 679; latest stable. blocked: charset.c:432 calls nl_langinfo, which Bionic declares only inside __BIONIC_AVAILABILITY_GUARD(26) as __INTRODUCED_IN(26) in langinfo.h:97, so it is not declared at API 24. Same root cause that already blocks Gawk and Pkgconf in this backlog; the only fixes are raising the target API level or patching the call site, both out of scope here)
 - [x] LFS-Bootscripts 20250827 (matches LFS pin; data only, no binaries)
-- [ ] Libcap 2.76
+- [ ] Libcap 2.76 (blocked: no reachable source. Upstream hosts releases on its Google Site, which does not respond from here, and kernel.org mirrors no libcap tarball (every libcap-2.7x.tar.gz path under pub/linux/libs/libcap returns 404), as do distfiles.gentoo.org, buildroot sources and the Debian pool. The GitHub project the LFS page points at no longer resolves either, so there is no git fallback to clone by tag. This also leaves IPRoute2's libcap dependency unmeetable)
 - [ ] Libffi 3.5.2
 - [ ] Libpipeline 1.5.8
 - [ ] Libtool 2.5.4
