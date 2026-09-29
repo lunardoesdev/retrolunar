@@ -15,7 +15,9 @@ return recipe({
           [ -f "$PREFIX/lib/libz$_ext" ] || ln -s "libzlib$_ext" "$PREFIX/lib/libz$_ext"
         done
         ./configure $AUTOCONF_CONFIGURE_FLAGS --with-zlib-prefix="$PREFIX"
-        make -j$(nproc 2>/dev/null || echo 4)
+        touch aclocal.m4 configure config.h.in
+        find . -name 'Makefile.in' | xargs touch
+        make -j1
         make install
     ]]
 })
