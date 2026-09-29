@@ -18,7 +18,7 @@ return recipe({
           -DBUILD_JPEG=OFF -DBUILD_PNG=OFF -DBUILD_TIFF=OFF -DBUILD_WEBP=OFF \
           -DWITH_TIFF=OFF \
           -DBUILD_LIST=core,imgproc,imgcodecs,videoio
-        cmake --build build -j$(nproc 2>/dev/null || echo 4)
+        cmake --build build --parallel 1
         cmake --install build
     ]]
 })
