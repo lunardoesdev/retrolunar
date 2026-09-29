@@ -66,7 +66,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] Perl 5.44.0 (blocked: upstream Android cross-build requires a reachable adb/ssh target; none available)
 - [ ] Pkgconf 3.0.7 (blocked: Bionic introduced nl_langinfo in API 26; API24 compilation fails)
 - [ ] Procps 4.0.7 (blocked: Clang 19 rejects FLT_MIN token-pasting in src/ps/common.h:101)
-- [ ] Psmisc 23.7
+- [ ] Psmisc 23.7 (blocked: Android cross link leaves rpl_malloc and rpl_realloc undefined)
 - [x] Readline 8.3
 - [ ] Sed 4.9
 - [ ] Setuptools 80.9.0
