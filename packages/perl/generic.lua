@@ -15,20 +15,18 @@ return recipe({
         # BUILD_ZLIB/BUILD_BZIP2 off makes perl link the zlib and bzip2 already
         # in $PREFIX instead of building private copies of them.
         #
-        # perl bakes absolute paths for its library search paths and for
-        # libperl.so's RUNPATH into the binary, and $OUT is a per-build staging
-        # directory that is deleted once the package is published, so a perl
-        # built with -Duseshrplib cannot start afterwards: it looks for
-        # libperl.so and its modules under the vanished $OUT. Installing
-        # privlib/archlib straight into $PREFIX does not help either, because
-        # those paths are still absolute and would name this checkout.
+        # perl bakes absolute paths for its module search path into the
+        # binary, and it has no relocation support for them. $OUT is a
+        # per-build staging directory that is deleted once the package is
+        # published, so pointing the library paths at $OUT leaves the
+        # installed perl unable to find its own core modules - every consumer
+        # then needs PERL5LIB to work around it.
         #
-        # Building a static perl avoids the problem: without -Duseshrplib the
-        # interpreter carries its own copy of the interpreter core and only
-        # the module search path remains, which PERL5LIB can correct at run
-        # time for packages that need it.
-        #
-        # Use a fixed libdir layout so downstream recipes can refer to it.
+        # The install target stays $OUT, but the library search paths
+        # (privlib/archlib/sitelib/...) name $PREFIX, which is exactly where
+        # the emitter publishes them, so the resulting perl is self-consistent
+        # and needs no PERL5LIB. The program prefix stays $OUT for the same
+        # reason: the binaries are staged and then copied verbatim.
         export BUILD_ZLIB=False
         export BUILD_BZIP2=0
         sh Configure -des \
@@ -38,12 +36,12 @@ return recipe({
             -Dldflags="$LDFLAGS" \
             -Dprefix=$OUT \
             -Dvendorprefix=$OUT \
-            -Dprivlib=$OUT/lib/perl5/5.44/core_perl \
-            -Darchlib=$OUT/lib/perl5/5.44/core_perl \
-            -Dsitelib=$OUT/lib/perl5/5.44/site_perl \
-            -Dsitearch=$OUT/lib/perl5/5.44/site_perl \
-            -Dvendorlib=$OUT/lib/perl5/5.44/vendor_perl \
-            -Dvendorarch=$OUT/lib/perl5/5.44/vendor_perl \
+            -Dprivlib=$PREFIX/lib/perl5/5.44/core_perl \
+            -Darchlib=$PREFIX/lib/perl5/5.44/core_perl \
+            -Dsitelib=$PREFIX/lib/perl5/5.44/site_perl \
+            -Dsitearch=$PREFIX/lib/perl5/5.44/site_perl \
+            -Dvendorlib=$PREFIX/lib/perl5/5.44/vendor_perl \
+            -Dvendorarch=$PREFIX/lib/perl5/5.44/vendor_perl \
             -Dman1dir=$OUT/share/man/man1 \
             -Dman3dir=$OUT/share/man/man3 \
             -Dusethreads
