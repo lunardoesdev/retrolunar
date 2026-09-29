@@ -4,7 +4,7 @@ return recipe({
     build = [[
         cp -r $NESTDIR/source/sdl2/* .
         cmake -S . -B build $CMAKE_FLAGS -DBUILD_SHARED_LIBS=OFF -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST=OFF -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DSDL_INSTALL_TESTS=OFF -DSDL_SYSTEM_ICONV=OFF -DSDL_LIBC=ON -DSDL_AUDIO=OFF -DSDL_VIDEO=ON -DSDL_GPU=OFF -DSDL_RENDER=ON -DSDL_CAMERA=OFF -DSDL_JOYSTICK=ON -DSDL_HAPTIC=OFF -DSDL_HIDAPI=ON -DSDL_POWER=ON -DSDL_FILESYSTEM=ON -DSDL_TIMERS=ON -DSDL_THREADS=ON -DSDL_LOCALES=OFF
-        cmake --build build -j$(nproc 2>/dev/null || echo 4)
+        cmake --build build --parallel 1
         cmake --install build
     ]]
 })
