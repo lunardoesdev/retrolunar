@@ -3,8 +3,9 @@
 --   relative: require("./x"), require("../x") -- file relative to the
 --     requiring file's directory, then RETROLUNAR_LIB (default: cwd).
 --   pack@sys: require("hello@source") -- packages/hello/source.lua if
---     it exists, else packages/hello/generic.lua, else error.
--- Both cache by resolved path in package.loaded so repeats run no code.
+--     it exists, else packages/hello/generic.lua, else error. Explicit
+--     pack@native resolves through DEFAULT_SYSTEM; it is not a system.
+-- Package modules cache by canonical pack@system identity.
 do
   local _require = require
   local _loaded = package.loaded
@@ -181,21 +182,28 @@ do
     if type(mod) ~= 'string' then return _require(mod, ...) end
     local pack, sys = mod:match('^([^@]+)@([^@]+)$')
     if pack and sys then
-      if _loaded[mod] ~= nil then return _loaded[mod] end
+      if sys == 'native' then
+        sys = _G.DEFAULT_SYSTEM
+        if type(sys) ~= 'string' or sys == '' then
+          error('retrolunar: DEFAULT_SYSTEM not set', 2)
+        end
+      end
+      local canon = pack .. '@' .. sys
+      if _loaded[canon] ~= nil then return _loaded[canon] end
       local rs = roots()
       for _, r in ipairs(rs) do
         local specific = r .. '/' .. pack .. '/' .. sys .. '.lua'
         if exists(specific) then
-          return run_with_sys(sys, specific, mod, function()
-            return load_cached(mod, specific, mod)
+          return run_with_sys(sys, specific, canon, function()
+            return load_cached(canon, specific, canon)
           end)
         end
       end
       for _, r in ipairs(rs) do
         local generic = r .. '/' .. pack .. '/generic.lua'
         if exists(generic) then
-          return run_with_sys(sys, generic, mod, function()
-            return load_cached(mod, generic, mod)
+          return run_with_sys(sys, generic, canon, function()
+            return load_cached(canon, generic, canon)
           end)
         end
       end

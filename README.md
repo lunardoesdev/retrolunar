@@ -23,9 +23,11 @@ ANDROID_HOME=/path/to/android-sdk sh build.sh
 ```
 
 The `install` arguments are one or more `pack[@sys]` targets: `pack`
-alone inherits the default system (`clang-native`), `pack@sys` pins a
-system. Dependencies resolve automatically — asking for `python` also
-builds `readline`, `termcap`, and their sources first.
+alone inherits the compile-time default system (`DEFAULT_SYSTEM`,
+`clang-native` by default); `pack@sys` pins a system. The magic
+`pack@native` spelling aliases that default—it does not name a separate
+target system. Dependencies resolve automatically — asking for `python`
+also builds `readline`, `termcap`, and their sources first.
 
 ## Where things go after building
 

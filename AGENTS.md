@@ -51,12 +51,16 @@ Three `require` forms:
 
 - `require("pack@sys")` — exact: `packages/pack/sys.lua`, else
   `packages/pack/generic.lua`, else error. Runs the chunk with `SYSTEM=sys`.
+  The magic `require("pack@native")` resolves `sys` to the compile-time
+  `DEFAULT_SYSTEM` (`clang-native` by default, overridable with
+  `-DRETROLUNAR_DEFAULT_SYSTEM=...`); it is an alias, not a separate target
+  system. Its cache and recipe identity are the same as the resolved
+  `pack@<DEFAULT_SYSTEM>` identity.
 - `require("pack")` — bare: inherits the requiring module's system from an
   explicit stack (`sys_stack`); at top level uses the C default
-  (`DEFAULT_SYSTEM`, `"clang-native"`, overridable with
-  `-DRETROLUNAR_DEFAULT_SYSTEM=...`). Inside a system file (stack top is
-  `generic`) bare requires also fall back to the C default. Exact
-  `pack@sys` never consults the stack.
+  (`DEFAULT_SYSTEM`). Inside a system file (stack top is `generic`) bare
+  requires also fall back to the C default. Explicit `pack@sys` never
+  consults the stack.
 - `require("./x")`, `require("../x")` — relative to the requiring file's
   directory, then `RETROLUNAR_LIB` (default `.`). `a.b` maps to `a/b`.
 
