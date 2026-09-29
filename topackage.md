@@ -36,7 +36,7 @@ Packages already in this repository remain on this list as candidates for versio
 - [ ] GRUB 2.14 (LFS 2.12; latest stable; blocked: 2.14 tarball omits grub-core/lib/libgcrypt-grub/src/misc.c and defines no `gcry` module to compile it, so the new pubkey module's rsa-common.c references _gcry_log_printmpi, which no module defines; grub-core/Makefile:57254 moddep.lst then fails with "_gcry_log_printmpi in pubkey is not defined". Not fixable without patching upstream sources)
 - [x] Gzip 1.15 (LFS 1.14; latest stable)
 - [x] Iana-Etc 20260911 (LFS 20250807; latest stable; data only, no binaries)
-- [ ] Inetutils 2.6
+- [ ] Inetutils 2.8 (LFS 2.6; latest stable. Mostly builds: telnet/telnet links and is a real Android 24 aarch64 binary ("ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c"), after forcing <termios.h> for telnet/sys_bsd.c, which uses struct termios without including it (glibc pulls it in transitively, Bionic does not). BLOCKED on ifconfig: changeif.c:256 calls ether_hostton, and Bionic has neither that symbol (llvm-nm on libc.so shows only ether_aton/ether_aton_r/ether_ntoa/ether_ntoa_r) nor a header declaring it - glibc declares it in <netether.h>. Supplying it would mean patching upstream or shipping a shim, both forbidden)
 - [ ] Intltool 0.51.0
 - [ ] IPRoute2 6.16.0
 - [ ] Jinja2 3.1.6
