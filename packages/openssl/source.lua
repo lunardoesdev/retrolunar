@@ -1,9 +1,9 @@
 return recipe({
-    version = "4.0.2",
+    version = "4.0.3",
     build = [[
         mkdir -p dl
         if [ ! -f dl/openssl.tar.gz ]; then
-          curl -fSL -C - -o dl/openssl.tar.gz "https://github.com/openssl/openssl/releases/download/openssl-4.0.2/openssl-4.0.2.tar.gz"
+          curl -fSL -C - -o dl/openssl.tar.gz "https://github.com/openssl/openssl/releases/download/openssl-4.0.3/openssl-4.0.3.tar.gz"
         fi
         rm -rf src
         mkdir -p src
