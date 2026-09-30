@@ -171,7 +171,7 @@ as "roughly how often a developer reaches for it".
 - [ ] Botan
 - [ ] nettle
 - [ ] libgcrypt
-- [ ] pcre2
+- [x] pcre2 10.45 (static libpcre2-8/16/32 plus libpcre2-posix, JIT on; pkg-config --modversion libpcre2-8 reports 10.45; archive members are elf64-littleaarch64; pcre2grep, pcre2test and pcre2-config installed. C++ disabled, so pcre2grep is a C program)
 - [ ] Oniguruma
 - [ ] libcap
 - [ ] libseccomp
