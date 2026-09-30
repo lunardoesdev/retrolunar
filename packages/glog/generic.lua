@@ -34,5 +34,38 @@ return recipe({
         cmake -S . -B build $CMAKE_FLAGS -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DWITH_GFLAGS=OFF -DWITH_GTEST=OFF -DWITH_GMOCK=OFF -DWITH_PKGCONFIG=ON -DWITH_UNWIND=none
         cmake --build build --parallel 1
         cmake --install build
+        # libglog.pc's Cflags is a genuine upstream packaging defect, on
+        # every system, not an Android artifact. libglog.pc.in:11 is a
+        # literal `Cflags: -I${includedir}` with no @variable@ in it, so no
+        # cmake option reaches it, while CMakeLists.txt:416 makes
+        # GLOG_USE_GLOG_EXPORT a PUBLIC compile definition of the target. A
+        # find_package(glog) consumer therefore gets it for free through
+        # INTERFACE_COMPILE_DEFINITIONS; a pkg-config consumer gets nothing,
+        # and the header then hard-fails: logging.h:55-57 includes
+        # glog/export.h only under `#if defined(GLOG_USE_GLOG_EXPORT)`, and
+        # logging.h:59-61 is `#error <glog/logging.h> was not included
+        # correctly` when GLOG_EXPORT or GLOG_NO_EXPORT is undefined. There
+        # is no recipe-side alternative: the macro has to reach the consumer
+        # as a compile flag, and the .pc Cflags line is the only channel a
+        # pkg-config consumer reads.
+        #
+        # This rewrites the .pc in $OUT, not an upstream source file.
+        # AGENTS.md's no-patch rule covers libglog.pc.in and the sources it
+        # is generated from; this is a post-install edit of a generated
+        # artifact in our own staging directory, on the same lines the loader
+        # already rewrites there for the same reason ($OUT to $PREFIX,
+        # src/loader.lua:454-468). It is a plain substitution, not a patch,
+        # and it is the only route: with no @variable@ in the Cflags line,
+        # cmake has nothing to configure. A duplicate Cflags: key would not
+        # do either - pkg-config resolves it last-key-wins, which drops the
+        # -I rather than adding to it - so the existing line is rewritten.
+        #
+        # The added text contains no $OUT, so the loader's staged-.pc pass
+        # takes its `*)` arm and prints this line verbatim. The rewrite
+        # cannot double-apply: cmake --install regenerates the .pc from
+        # libglog.pc.in on every build, so the input never already carries
+        # the macro.
+        awk '{ if ($0 ~ /^Cflags:/) print $0 " -DGLOG_USE_GLOG_EXPORT"; else print }' "$OUT/lib/pkgconfig/libglog.pc" > "$WORK/libglog.pc"
+        cp "$WORK/libglog.pc" "$OUT/lib/pkgconfig/libglog.pc"
     ]]
 })

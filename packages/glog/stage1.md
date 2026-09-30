@@ -42,11 +42,32 @@ timestamp guard does not apply to this package.
   (`CMakeLists.txt:966`).
 - `lib/pkgconfig/libglog.pc` — only because the recipe passes
   `WITH_PKGCONFIG=ON`; upstream defaults it **OFF** (`CMakeLists.txt:39`).
-  The recipe is `libglog.pc.in` with `Libs: -L${libdir} -lglog`,
+  The template is `libglog.pc.in` with `Libs: -L${libdir} -lglog`,
   `Libs.private: @glog_libraries_options_for_static_linking@` and
   `Cflags: -I${includedir}`; the generated file is installed at
-  `CMakeLists.txt:970-974`. The loader's staged-`.pc` rewrite turns `$OUT` into
-  `$PREFIX` on the way out.
+  `CMakeLists.txt:970-974`. The loader's staged-`.pc` rewrite turns `$OUT`
+  into `$PREFIX` on the way out.
+
+  **Two corrections, both found by the build (see `stage3.md`, "Second
+  build"). The `.pc` as this forecast describes it is unusable:**
+
+  1. `Cflags:` **must** also carry `-DGLOG_USE_GLOG_EXPORT`. I read
+     `CMakeLists.txt:416` (`target_compile_definitions (glog PUBLIC
+     GLOG_USE_GLOG_EXPORT)`) as the end of it and missed that
+     `libglog.pc.in:11` has **no `@variable@` in its `Cflags` line at
+     all**, so that PUBLIC definition reaches a `find_package` consumer
+     through `INTERFACE_COMPILE_DEFINITIONS` and reaches a `pkg-config`
+     consumer **not at all**. The consequence is a hard failure, not a
+     degradation: `include/glog/logging.h:55-61` includes the generated
+     `glog/export.h` only under `#if defined(GLOG_USE_GLOG_EXPORT)` and
+     then `#error`s when `GLOG_EXPORT`/`GLOG_NO_EXPORT` are undefined, so
+     `#include <glog/logging.h>` fails to compile at all. This is a
+     genuine upstream packaging quirk on **every** system, not an Android
+     artifact, and since the template offers no variable, no cmake option
+     can fix it.
+  2. `Libs.private:` gains `-llog` on Android, for the reason under "The
+     `-llog` finding" below — but see the correction there about *where*
+     the fix belongs.
 - `lib/cmake/glog/glog-config.cmake` and the exported target set.
 - Also generated and installed: `include/glog/export.h`
   (`generate_export_header`, `CMakeLists.txt:502-504`), plus the `glog/`
@@ -78,9 +99,18 @@ keeps pthreads in libc and the Android systems already pass
 | `WITH_UNWIND=none` | A **reproducibility** choice, not a capability one. Upstream defaults `libunwind` (`CMakeLists.txt:43`). Bionic's sysroot has **no `unwind.h` and no `libunwind.h` at all** (I listed `$SYSROOT/usr/include`; only `execinfo.h` matches), so `find_package(Unwind)` can only ever succeed on `clang-native` — where the host has `/usr/include/libunwind.h` and ten `libunwind` entries in `ldconfig`. Left at the default, `clang-native` would link `unwind::unwind`, bake `-lunwind` into `Libs.private` (`CMakeLists.txt:435-438`) and compile `stacktrace_libunwind-inl.h`, while every cross family would compile the generic backtrace path. Setting `none` makes the artifact identical on all six families. `packages/libunwind` 1.8.3 **does** exist in this tree; it is deliberately not a dependency here, and the flag is about the host's `unwind.h` leaking in, not about a missing package. |
 | `WITH_SYMBOLIZE` | Left at its ON default. It is glog's *own* ELF symbolizer, `src/symbolize.cc`, needing no external library, and it is what makes `--symbolize_full` useful. |
 
-No `android.lua`. There is no Android-only switch that would make the build
-work; the one Android-specific problem is a link-time `-llog` matter for
-consumers, covered below, and it is not fixable from a recipe.
+**There is now an `android.lua` (from the build — see `stage3.md`, "Second
+build"). This paragraph originally said there was none, because "the one
+Android-specific problem is a link-time `-llog` matter for consumers … and
+it is not fixable from a recipe". That last clause was wrong.** The gap is
+fixable at the recipe level, with `-DANDROID=ON`: that is the cache variable
+`if (ANDROID)` at `CMakeLists.txt:463` tests, and setting it by hand makes
+upstream's own branch run. That is the whole fix — no patch, and no `.pc`
+rewriting for *this* defect — and it repairs the exported CMake target
+(`$<LINK_ONLY:log>`) as well as `Libs.private`. It lives in `android.lua`
+because it is an Android fact: `x86_64-mingw` and `clang-native` have no
+`liblog` and must not get the flag, and `generic.lua` is the recipe both of
+them use.
 
 ## Per-system verdict
 
@@ -141,16 +171,34 @@ The chain, all verified in the extracted `v0.7.1` tree:
 without complaint. It is the *consumer* that fails: anything linking
 `libglog.a` on Android gets `undefined reference to __android_log_write`.
 
-**This is a system change, not a recipe change.** `-llog` belongs in the
-Android systems' `LDFLAGS`, next to the `-lm` line —
-`packages/aarch64-android24/generic.lua:79`, in the `LDFLAGS` section
-immediately after the Bionic-keeps-math-in-libm comment — and in its **55
-sibling systems** (56 `*android*` directories in `packages/`, all 56 of which
-already carry that `-lm` line). The same one-line addition fixes abseil-cpp,
-whose `absl/log/CMakeLists.txt:237` gates `-llog` on the identical
-`$<$<BOOL:${ANDROID}>:-llog>` expression. A recipe cannot fix this: AGENTS.md
-forbids `export`ing `LDFLAGS` in a recipe, and the flag is a property of the
-platform, not of glog.
+**CORRECTION (from the build): this *is* fixable from a recipe, and the
+recipe is the right place for glog's half of it.** The paragraph this
+replaces argued that `-llog` "belongs in the Android systems' `LDFLAGS` …
+and in its 55 sibling systems" and that "a recipe cannot fix this". Both
+claims are wrong for `libglog.pc`, and the reasoning error is worth
+recording: I reasoned from the rule that a recipe may not `export` `LDFLAGS`
+and concluded the flag therefore had to live in a system file. But the
+defect is not that a *build* of glog lacks `-llog` — the build has no link
+step at all. The defect is that the **`.pc` glog installs** does not tell a
+`pkg-config` consumer about liblog, and the systems' `LDFLAGS` can never fix
+that, because `LDFLAGS` only reaches consumers that link through this build
+system. A `pkg-config --libs --static libglog` consumer is handed
+`-L…/lib -lglog -pthread` and nothing else.
+
+The fix is one cache answer in `packages/glog/android.lua`:
+`-DANDROID=ON`. That is the variable step 5 above says is unset; setting it
+makes upstream's own `if (ANDROID)` branch run, which sets `-llog` in
+`Libs.private` and adds `$<LINK_ONLY:log>` to the exported target. It is
+not a patch, it is upstream answering a question, and the archive is
+byte-identical with and without it.
+
+The systems' `-llog` is still correct on its own terms and is still
+needed — for abseil-cpp, whose `absl/log/CMakeLists.txt:237` gates `-llog`
+on the identical `$<$<BOOL:${ANDROID}>:-llog>` expression and has the same
+`.pc` problem. That one **is** a 56-system change, because abseil's recipe
+has no equivalent of `-DANDROID=ON` to put in one place. So: glog's `-llog`
+is a recipe fix, abseil's is still a system fix, and this forecast
+conflated them.
 
 The `liblog.so` the flag refers to is present in the NDK sysroot at every API
 level (`$SYSROOT/usr/lib/{aarch64,x86_64}-linux-android/{21,24,35}/liblog.so`
@@ -159,8 +207,9 @@ compiled a call against both), so there is no API-level caveat.
 
 ## What a reviewer should scrutinise
 
-1. **`-llog`, above.** The whole finding. glog's own build is fine; every
-   Android consumer is not, until the systems' `LDFLAGS` gains `-llog`.
+1. **`-llog`, above, and its CORRECTION.** The whole finding. glog's own
+   build is fine; every Android consumer is not. The fix shipped as
+   `-DANDROID=ON` in `packages/glog/android.lua`, not as 56 system files.
 2. **`x86_64-mingw` and `HAVE_SYMBOLIZE`.** The `try_run()` result is a
    non-false string, so the Windows `dbghelp` branch of `src/symbolize.cc` is
    compiled on a variable that was never actually tested. This is a genuine
