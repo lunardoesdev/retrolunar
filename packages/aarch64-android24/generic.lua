@@ -67,6 +67,11 @@ return system({
         # global -L would leak host-style rpath flags into cargo.
         LDFLAGS="-L$PREFIX/lib"
         LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
+        # Bionic keeps the math functions in libm; glibc folds them into
+        # libc, so a program that calls log2/pow/exp links fine there and
+        # fails here. libm is in every Android sysroot, so -lm always costs
+        # nothing and saves every package from hitting this.
+        LDFLAGS="$LDFLAGS -lm"
         export LDFLAGS
         # Look up .pc files in our prefix, then the NDK sysroot...
         PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
