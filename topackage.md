@@ -162,7 +162,7 @@ as "roughly how often a developer reaches for it".
 - [x] c-ares 1.34.8 (static libcares.a; pkg-config --modversion libcares reports 1.34.8; archive members are elf64-littleaarch64. Tools and tests off)
 - [x] libevent 2.1.12-stable (static libevent, libevent_core, libevent_extra and libevent_openssl against the OpenSSL in this prefix; pkg-config --modversion libevent reports 2.1.12-stable; archive members are elf64-littleaarch64)
 - [x] libuv 1.51.0 (static libuv.a, uv.h and uv/, CMake package config; archive members are elf64-littleaarch64. Note: 1.51.0 installs no pkg-config file, so link -luv or use find_package(libuv))
-- [ ] nghttp2
+- [x] nghttp2 1.68.0 (static libnghttp2.a; pkg-config --modversion libnghttp2 reports 1.68.0; archive members are elf64-littleaarch64. Applications, tests, bindings and every optional dependency off, so the library needs only libc)
 - [ ] libssh2
 - [ ] libgit2
 - [x] mbedTLS 3.6.3 (static libmbedtls, libmbedx509 and libmbedcrypto; pkg-config --modversion mbedtls reports 3.6.3; archive members are elf64-littleaarch64. Programs and tests off)
