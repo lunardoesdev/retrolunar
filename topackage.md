@@ -120,7 +120,7 @@ as "roughly how often a developer reaches for it".
 
 ## Android candidates (100)
 
-- [ ] Brotli
+- [x] Brotli 1.1.0 (static libbrotlienc/libbrotlidec/libbrotlicommon plus the brotli/brotlicli tools; archive members are elf64-littleaarch64; pkg-config --modversion libbrotlienc reports 1.1.0. Needed -lm: the zopfli encoder path calls log2(), which Bionic keeps out of libc, so the Android systems now carry it in LDFLAGS)
 - [ ] Snappy
 - [ ] Zopfli
 - [ ] ISA-L
