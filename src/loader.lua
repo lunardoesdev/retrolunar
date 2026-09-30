@@ -446,11 +446,16 @@ do
           end
         end
       end
-      -- Staged .pc and libtool .la files bake $OUT paths; $OUT is a
-      -- per-block mktemp dir, so rewrite textually to $PREFIX. Pure sh
-      -- string ops, no sed.
+      -- Staged .pc, libtool .la and CMake package config files bake $OUT
+      -- paths; $OUT is a per-block mktemp dir, so rewrite textually to
+      -- $PREFIX. Without the cmake part, a config installed by one package
+      -- points at a staging dir that no longer exists, and find_package in
+      -- the next package fails. Pure sh string ops, no sed.
       out[#out + 1] = '  for _fix in "$OUT"/lib/pkgconfig/*.pc'
-        .. ' "$OUT"/share/pkgconfig/*.pc "$OUT"/lib/*.la; do\n'
+        .. ' "$OUT"/share/pkgconfig/*.pc "$OUT"/lib/*.la'
+        .. ' "$OUT"/lib/cmake/*.cmake "$OUT"/lib/cmake/*/*.cmake'
+        .. ' "$OUT"/lib/cmake/*/*/*.cmake'
+        .. ' "$OUT"/share/cmake/*.cmake "$OUT"/share/cmake/*/*.cmake; do\n'
       out[#out + 1] = '    [ -f "$_fix" ] || continue\n'
       out[#out + 1] = '    while IFS= read -r _line || [ -n "$_line" ]; do\n'
       out[#out + 1] = '      case "$_line" in\n'
