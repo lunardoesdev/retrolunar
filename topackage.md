@@ -141,7 +141,7 @@ as "roughly how often a developer reaches for it".
 - [x] cJSON 1.7.18 (static libcjson.a, archive members are elf64-littleaarch64; cJSON_add and cJSON_pretty installed. Note: upstream ships no pkg-config file, so consumers link -lcjson)
 - [x] Jansson 2.14 (static libjansson.a; pkg-config --modversion jansson reports 2.14; archive members are elf64-littleaarch64)
 - [ ] json-c
-- [ ] nlohmann-json
+- [x] nlohmann-json 3.11.3 (header-only: include/nlohmann/json.hpp plus a CMake package config and nlohmann_json.pc. Nothing is compiled, so it is identical on every system)
 - [ ] RapidJSON
 - [ ] SimdJSON
 - [ ] YAML-CPP
