@@ -221,17 +221,61 @@ Rules:
   `CFLAGS="$CFLAGS -fPIC"` because python links it into a shared module;
   termcap needs `CC="$CC -std=gnu89"` because it predates prototypes).
 - Build-body hygiene (hard rules): only `cp`, `./configure`, `cmake`,
-  `make`, `make install`, `touch`, `find`, `mkdir`, `cat`-heredocs.
-  NEVER `sed`, patches, `/dev/null`, or multi-job builds. Build serially:
-  use `make -j1` or the build tool's equivalent single-job option. This
-  keeps logs readable and ordering deterministic.
-  (`packages/opencv/generic.lua` was the last recipe still using
-  `-j$(nproc ...)`; it now uses `cmake --build build --parallel 1`.)
+  `make`, `make install`, `ninja`, `touch`, `find`, `mkdir`,
+  `cat`-heredocs.
+  NEVER `sed`, patches, `/dev/null`, or multi-job builds. A build must
+  never fan out: write the single-job option explicitly — `make -j1`,
+  `cmake --build build --parallel 1`, `ninja -C build`. This keeps logs
+  readable and ordering deterministic. Note the two cases are not the
+  same: `make` already defaults to serial (bare `make` reports
+  `MAKEFLAGS=[]`), so `-j1` there is about being explicit, while ninja
+  does NOT default to serial, so the flag is load-bearing. A bare `make`
+  in a recipe is not a defect; a recipe that fans out is. (`packages/opencv/generic.lua`
+  was the last recipe still using `-j$(nproc ...)`; it now uses
+  `cmake --build build --parallel 1`. `make -j1` was once rejected as a
+  correctness requirement across five packages, and the resulting
+  "fixes" were edits to correct recipes for no reason.)
 - Autotools timestamp guard after every `./configure` (tarball mtimes
   trigger `aclocal-1.17` re-runs we don't have):
-  `touch aclocal.m4 configure config.h.in` +
+  `touch aclocal.m4 configure <the package's own config template>` +
   `find . -name 'Makefile.in' | xargs touch`
-  (also `Makefile.pre.in` for python).
+  (also `Makefile.pre.in` for python). **Check the real name in the
+  unpacked tree** (`nest/source/<name>`), do not assume `config.h.in`.
+  Spellings that occur here:
+  - `config.h.in` — most packages
+  - `config.hin` — coreutils, diffutils, grep, gzip, groff
+  - `ac_config.h.in` — libconfig
+  - `configure.h.in` — libseccomp
+  - `config_h.in` — sed (underscore between `config` and `h`, not a dot)
+  - `config-h.in` — libtool (hyphen between `config` and `h`)
+  - `defines.h.in` — less (no `config` in the name, at the top level)
+  - sub-configured — two or more templates, one per sub-`configure`:
+    c-ares (`src/lib/ares_config.h.in` AND `include/ares_build.h.in`),
+    gawk (`configh.in` AND `extension/configh.in`),
+    gperf (`src/config.h.in` AND `lib/config.h.in`)
+  - none at top level — gmp generates `config.in`, gettext has no top-level
+    template; guard the files it does have
+  - none anywhere — intltool 0.51.0 has no `AC_CONFIG_HEADERS` at all:
+    drop the template from the touch list rather than relocating it,
+    since naming a file that does not exist is the same inert guard as
+    naming the wrong one
+
+  A sub-configured project ships its own `configure`, `aclocal.m4`,
+  template and `Makefile.in` per subdirectory (`AC_CONFIG_SUBDIRS`;
+  gawk's `extension/`, gperf's `lib src tests doc`), so a guard that
+  sweeps only the top level leaves the sub-configure's autoheader target
+  live — the same silent failure. Guard every sub-configure.
+
+  Every entry above was found by a recipe guessing wrong, not by anyone
+  reading the tarball first, so this list is evidence, not a lookup table:
+  it will be incomplete again for the next package. Checking the unpacked
+  tree is what makes the guard safe, not the list.
+
+  Getting the name wrong fails silently: `touch` on a missing FILE in an
+  existing DIRECTORY succeeds and creates it, so the wrong template name
+  raises nothing under `set -eu` and the autoheader re-run the guard exists
+  to prevent stays live. Correct examples: libnl-3, libunwind, oniguruma,
+  libseccomp.
 - Old C code (termcap 1.3.1): `export CC="$CC -std=gnu89"`.
   Old `bool`-typedef code: `-std=gnu17` (NDK clang defaults to C23).
 - `make install` installs straight into `$OUT` (`--prefix=$OUT` /
@@ -327,7 +371,203 @@ Rules:
   `NN` in wrapper names, `--host`, file names, error strings. Existing
   `android21` dirs stay untouched.
 
+## The package pipeline
+
+Bulk package work runs as a three-role pipeline with a written hand-off at
+every transition. The hand-off artefacts are Markdown files inside the
+package directory: `stage1.md` (build forecast), `stage2.md` (review
+verdict), `stage3.md` (build record). Read all three in order before
+touching a package.
+
+### Why the stage files exist
+
+The builder trusts the forecast. A forecast that is wrong is worse than no
+forecast, because a green "WILL BUILD" in `stage1.md` turns a known red
+build into a surprise, and a surprise is what gets worked around instead of
+reported.
+
+The review gate's real output is therefore the rejection list. In the run
+that produced this pipeline, a 44-package forecast wave returned 16 ACCEPT
+and 28 REJECT, and a 10-package wave returned 8 ACCEPT and 2 REJECT. The
+rejects were not style complaints. They found real defects with nothing to
+do with the package under review:
+
+- The autotools timestamp guard was applied as a blanket
+  `touch config.h.in`, but no such fixed name exists in this tree — each
+  package has its own, and the rule that spells them out now lives in
+  'Writing a build recipe'. Roughly 18 recipes carried an inert guard
+  touching a file their package does not have.
+- Two Python packages installed into different `site-packages` versions
+  under the same prefix, so one of them was invisible to the other.
+- A `case $HOST_ARCH` with no `*)` arm silently sent mingw and native down
+  the Android branch.
+
+The first of those deserves the extra note, because it does not fail:
+`touch` on a missing FILE inside an existing DIRECTORY succeeds and
+creates the file. An inert guard therefore raises nothing under `set -eu`,
+and the autoheader re-run it was meant to suppress stays live. Those
+packages were marked done and had been surviving on lucky mtimes.
+
+### Role 1 — adder
+
+Picks packages off `topackage.md` (the LFS checklist plus the curated
+C/C++ candidate lists per platform) and writes, for each:
+
+- `packages/<name>/source.lua`
+- `packages/<name>/generic.lua`
+- `packages/<name>/android.lua` only when an Android-only switch is
+  genuinely needed. Android systems declare `recipe_fallbacks =
+  {"android"}`, so one `android.lua` covers every Android target; never
+  write a per-target copy.
+- `packages/<name>/stage1.md` — the build forecast.
+
+`stage1.md` carries one verdict row per system family: `aarch64-android21`,
+`aarch64-android24`, `aarch64-android35`, `x86_64-android35`,
+`x86_64-mingw`, `clang-native`. Each row is WILL BUILD, WILL NOT BUILD or
+UNCERTAIN, and every non-trivial claim cites a file and a line in the
+upstream tree. UNCERTAIN is a legitimate answer. "Looks fine" is not an
+answer.
+
+The adder researches by downloading tarballs and reading the real build
+files: does the release ship a generated `configure`, what is the config
+template actually called, which subdirectories hold host programs, which
+options really exist. The adder does not build, compile, configure or test
+anything.
+
+### Role 2 — reviewer
+
+Reads the recipes plus `stage1.md` and writes `packages/<name>/stage2.md`.
+The first line is exactly `ACCEPT` or `REJECT`.
+
+Two questions decide it:
+
+1. **Is the recipe using the SYSTEM?** Every build-system flag comes from
+   `$CMAKE_FLAGS`, `$MESON_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$CC`,
+   `$CXX`, `$CFLAGS`, `$CXXFLAGS`, `$PREFIX`, `$OUT`, `$SYSDIR`. No
+   hardcoded target facts. No `export` of search flags in a recipe; a
+   package-local flag is acceptable only with a comment saying why. See
+   'Writing a build recipe' for the rules themselves.
+2. **Is the recipe doing what the package actually needs?** The real config
+   template name, a correct autotools timestamp guard, no host programs
+   compiled on a cross build, no target binary ever executed, a build that
+   never fans out (the single-job option written explicitly; `make`
+   already defaults to serial, so a missing `-j1` on its own is not a
+   defect — see 'Writing a build recipe'), dependencies that actually
+   exist, `require()` spelled the way the loader resolves it.
+
+A REJECT has to be precise enough that the adder can fix it without asking
+a question. A vague REJECT is useless. A reviewer may also reject a recipe
+whose flags are all correct but whose stated reason is false: a wrong
+justification is a real defect, because it is what makes the next person
+"fix" a correct flag.
+
+A required change must never rest on an observation you could only make
+through clipped output. Long table cells and long comment blocks get
+truncated in tool displays, and the ellipsis you see may be the display's,
+not the file's. Before asking anyone to complete a sentence, confirm it is
+really incomplete — `grep -c` for the ellipsis character, or `od` on the
+tail of the line — and quote the byte evidence in the `stage2.md`.
+
+An adder that believes a required change is wrong says so and shows the
+evidence rather than making a plausible edit. A fabricated completion is
+worse than the original defect: it looks like the review was satisfied.
+
+Seen here: a `stage2.md` asked an adder to finish a sentence truncated
+mid-cell in a `stage1.md` table row. The cell was ~950 characters and
+complete — the reader clipped it at 768 with an ellipsis the file does not
+contain. The adder proved that byte-level and declined to edit; the
+director confirmed it by reading the same line and seeing its own reader
+clip it identically.
+
+A claim that a file is ABSENT needs the same evidence as a claim that it
+is present. Three separate reviews here asserted "this package ships no
+config header template" and in all three cases the package did ship one —
+nobody had read the tree. Grep `AC_CONFIG_HEADERS` in `configure.ac` and
+list the file before writing down that it is not there. An absence claim
+with no command behind it is the weakest thing a `stage2.md` can say, and
+it is how a correct recipe loses a correct guard.
+
+Reviewers rule on the forecast too. `stage1.md` claiming WILL BUILD with no
+citation is a finding. A forecast that contradicts the recipe is a REJECT.
+
+### Role 3 — builder
+
+Builds only what reviewers accepted, on the system where it will most
+certainly build, writes `packages/<name>/stage3.md` with the real build log
+and any errors, and commits — one commit per package, with the stage1/2/3
+files included, following the commit rules in 'Workflow'. A failed build is
+still committed: the failure text is the deliverable.
+
+A platform fact discovered during a build (a missing Bionic symbol, a
+system-level flag absent from every system file) is recorded as a
+system-level blocker in `stage3.md` and is NOT worked around in the recipe.
+The builder is the only role that commits. The adder and the reviewer leave
+their work uncommitted for the builder to pick up.
+
+### Hand-offs
+
+A REJECT goes back to the adder that wrote the recipe, who fixes it and
+does not commit. Rework is not optional and not a formality — see the
+accept/reject counts above. An accepted package goes to the builder.
+
+### Sharding
+
+~150 packages is too much for one pass. Split by first letter into disjoint
+shards so two or three adders never write the same file, and skip any
+directory that already has a stage file so nobody duplicates themselves.
+
+A system directory is not a package. Names matching `*-android<number>`,
+plus `x86_64-mingw` and `clang-native`, are systems and get no stage files.
+
+Do not use "has a source.lua" as a membership test: a package may have only
+a `generic.lua` (pngprobe does).
+
+### Checking a claim is not building the package
+
+The reviewer may compile a throwaway probe against the NDK compilers under
+`/tmp` to settle a factual claim about a header or a macro — is
+`<asm/unistd.h>` really unavailable, is `PTRACE_POKEUSR` a real macro. That
+is checking a fact, not building the package, and it is how claims get
+overturned: a forecast that merely repeats the adder's unverified assertion
+is worth nothing, because the builder has no way to tell which parts were
+checked and which were copied.
+
+### Freshness before build
+
+The builder must invalidate the freshness stamp before building:
+
+- delete `nest/<sys>/.retrolunar-<name>`
+- delete `nest/source/<name>` as well when the source recipe's version, URL
+  or layout changed
+
+Otherwise a stamp left by an earlier build makes the emitted script print
+`skip <name> (fresh)`, the new recipe is never executed at all, and stage3.md
+records a green skip as if it were a build. A build counts as a build only
+if the log shows real work.
+
+After a successful build, rerun and confirm it prints `skip ... (fresh)` —
+that is the only way to prove the new stamp is real.
+
+### Parallel agents on one nest
+
+Several agents can share `./nest`, but the nest's `flock` is fail-fast (see
+'Workflow'), and a mutex wrapped around a whole batch makes the batch queue
+instead of interleave: one slow build blocks the rest. Take the lock per
+package rather than per batch.
+
+The repo's own "no emulation" rule is load-bearing here. A build that wants
+to RUN a target binary — expect's `tclsh` generating `pkgIndex.tcl`, groff
+rendering its own examples, `file` generating `magic.mgc`, tzdata running
+its own `zic` — is a blocker: record it in `stage3.md` and stop. Never
+install an emulator to get past it.
+
 ## Workflow
+
+For bulk package work — a backlog sweep, or anything with more than a
+handful of packages — follow 'The package pipeline' above. It is the same
+set of rules below, split across an adder, a reviewer and a builder with a
+forecast and a review at each hand-off. The rest of this section describes
+the plain single-agent path, which is what an update or a fix needs.
 
 ```sh
 ninja -C builddir retrolunar          # rebuild after loader/C changes
@@ -337,15 +577,19 @@ ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
 ```
 
 - When asked to add package(s), implement them and run their build on one
-  suitable provided system. Preserve `./nest` and reuse its successful
-  outputs; do not delete it or force dependency rebuilds unless necessary.
+  suitable provided system. For more than a handful, use 'The package
+  pipeline' above instead of this path. Preserve `./nest` and reuse its
+  successful outputs; do not delete it or force dependency rebuilds unless
+  necessary.
 - Several package additions may run at once against one `./nest`. The
   nest's own lock is fail-fast, so a second build would abort rather than
-  queue: wrap the whole generate-and-run sequence in one shared mutex,
-  `flock ~/ond/git/rl-build.lock sh -c '...'`, which keeps builds serial as
-  the rules below require while letting the work parallelise. Agents editing
-  packages need separate jj working copies (`jj workspace add`) as siblings
-  of this repo, so their commits never race.
+  queue: take a shared mutex around each package's generate-and-run
+  sequence, `flock ~/ond/git/rl-build.lock sh -c '...'`. Take it per
+  package, not per batch: a batch-wide lock makes the whole batch queue
+  behind one slow build instead of interleaving. See 'The package pipeline'
+  for the shared-nest rules. Agents editing packages need separate jj
+  working copies (`jj workspace add`) as siblings of this repo, so their
+  commits never race.
 - When asked to update package(s), update exactly the requested scope. Check
   each package's latest stable upstream release, then update its version,
   source URL or git tag, and any build recipe details that changed. Preserve
@@ -362,7 +606,12 @@ ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
   drop the files.
 - Verify per package: artifact exists (`lib/libfoo.a`,
   `bin/tool`, `include/foo.h`), `pkg-config --modversion foo` if a `.pc`
-  ships, rerun prints `skip ... (fresh)`.
+  ships, rerun prints `skip ... (fresh)`. That last check only means
+  something after you have invalidated the stamp: delete
+  `nest/<sys>/.retrolunar-<name>` (and `nest/source/<name>` when the
+  source recipe's version, URL or layout changed) before building, or the
+  rerun skips the new recipe and the skip gets recorded as a build. See
+  'The package pipeline' → 'Freshness before build'.
 - Known platform walls (don't re-investigate, work around or drop):
   API 21 lacks `stderr` as a real symbol, `POSIX_MADV_*`,
   `process_vm_readv`, `posix_spawn`, `mblen`/`getpass`, `O_BINARY` —
