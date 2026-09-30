@@ -201,7 +201,7 @@ as "roughly how often a developer reaches for it".
 - [ ] miniaudio
 - [ ] PortAudio
 - [ ] libsndfile
-- [ ] libvorbis
+- [x] libvorbis 1.3.7 (static libvorbis, libvorbisenc and libvorbisfile; pkg-config --modversion vorbis reports 1.3.7; archive members are elf64-littleaarch64. Needs libogg, which is now in the prefix)
 - [x] libogg 1.3.5 (static libogg.a; pkg-config --modversion ogg reports 1.3.5; archive members are elf64-littleaarch64)
 - [ ] FLAC
 - [ ] opusfile
