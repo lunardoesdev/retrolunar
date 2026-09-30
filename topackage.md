@@ -125,7 +125,7 @@ as "roughly how often a developer reaches for it".
 - [ ] Zopfli
 - [ ] ISA-L
 - [x] xxHash 0.8.2 (static libxxhash.a, xxhsum tool, libxxhash.pc reporting 0.8.2; archive members are elf64-littleaarch64. Note: the CMake build lives in cmake_unofficial/, and it needs -DCMAKE_POLICY_VERSION_MINIMUM=3.5 under cmake 4.x)
-- [ ] Zlib-ng
+- [x] Zlib-ng 2.2.4 (static libz-ng.a with the plain zlib API, ZLIB_COMPAT=OFF; pkg-config --modversion zlib-ng reports 2.2.4; archive members are elf64-littleaarch64)
 - [ ] Minizip
 - [ ] minizip-ng
 - [ ] zziplib
