@@ -202,7 +202,7 @@ as "roughly how often a developer reaches for it".
 - [ ] PortAudio
 - [ ] libsndfile
 - [ ] libvorbis
-- [ ] libogg
+- [x] libogg 1.3.5 (static libogg.a; pkg-config --modversion ogg reports 1.3.5; archive members are elf64-littleaarch64)
 - [ ] FLAC
 - [ ] opusfile
 - [ ] mpg123
