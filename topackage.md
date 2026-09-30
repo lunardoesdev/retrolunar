@@ -215,7 +215,7 @@ as "roughly how often a developer reaches for it".
 - [ ] plog
 - [ ] glog
 - [ ] Log4cxx
-- [ ] Catch2
+- [x] Catch2 3.8.1 (static libCatch2.a and libCatch2Main.a, catch2/ headers and a CMake package config; archive members are elf64-littleaarch64. No pkg-config file upstream, so use find_package(Catch2))
 - [ ] doctest
 - [ ] GoogleTest
 - [ ] Google-Benchmark
