@@ -77,6 +77,12 @@ return system({
         AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
+        # --- hand-written configure target tuple ---
+        # FFmpeg-style configure (libvpx) has no --host/--build and needs an
+        # explicit --target. The spelling is libvpx's own, so it lives here
+        # and recipes pass it through unchanged.
+        TARGET_TRIPLET="arm64-android-gcc"
+        export TARGET_TRIPLET
         # Autoconf probes link a test program and run it, which cannot work
         # while cross compiling. Bionic defines these as inline functions.
         export ac_cv_func_ffsl=yes

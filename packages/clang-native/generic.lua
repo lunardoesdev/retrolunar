@@ -39,6 +39,11 @@ return system({
         # --- build-system defaults: install into $OUT ---
         AUTOCONF_CONFIGURE_FLAGS="--build=x86_64-pc-linux-gnu --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
+        # Native: hand-written configure (libvpx) detects the host itself and
+        # needs no tuple. Defined (empty) so every system exports the same
+        # variables.
+        TARGET_TRIPLET=""
+        export TARGET_TRIPLET
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"

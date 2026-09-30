@@ -192,10 +192,11 @@ Rules:
   copied from `$NESTDIR/source/<name>/` (not `$OUT`).
 - Keep `generic.lua` system-neutral. Any flag, cache answer, or workaround
   that is only correct for one target belongs in `packages/<name>/<sys>.lua`,
-  added for every supported system that needs it — never in the generic
-  fallback. If several systems need the same package-specific build, the short
-  `<sys>.lua` files may delegate to a clearly named package-local module such
-  as `android.lua` instead of duplicating the recipe body.
+  never in the generic fallback. Ship ONE file per *family*, not per target:
+  every Android system lists `android` in its `recipe_fallbacks`, so
+  `packages/<name>/android.lua` is found for all of them, and a recipe for
+  one system is just `packages/<name>/<sys>.lua`. Never add a per-target
+  copy of an Android recipe — the fallback already covers it.
 - When a rule describes the target system rather than one package (a libc
   fact, an Autoconf cache answer, a toolchain quirk), put it in
   `packages/<sys>/generic.lua` next to the other environment variables, so
@@ -203,7 +204,12 @@ Rules:
   Examples: Android systems export `ac_cv_func_ffsl=yes` because Bionic
   defines `ffsl` inline and Autoconf's link probe cannot see it.
 - Build-system flags come from the system, never hardcoded:
-  `$CMAKE_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$MESON_FLAGS`.
+  `$CMAKE_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$MESON_FLAGS`. Hand-written
+  (FFmpeg-family) `configure` scripts are not autoconf and reject
+  `--host`/`--build`, so their target identity comes from the system as
+  `$TARGET_TRIPLET` (empty on native, where the host is detected) and the
+  recipe spells it in that build system's own option. Nothing autoconf-
+  incompatible ever goes into `$AUTOCONF_CONFIGURE_FLAGS`.
   Search flags (`CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_*`) also come from the
   system — never `export` them in a recipe. Exception: recipe-local
   workarounds with a comment explaining why (e.g. readline needs
@@ -230,7 +236,8 @@ Rules:
   meson cross files live in `$SYSDIR`; cargo needs
   `PKG_CONFIG_ALLOW_CROSS=1` + `RUSTFLAGS="-L $PREFIX/lib"`;
   libvpx configure wants `--extra-cflags="--sysroot=$SYSROOT"`, not
-  `-isystem` (breaks libc++ include order).
+  `-isystem` (breaks libc++ include order) — that line lives in
+  `packages/libvpx/android.lua`.
 - Name-mismatch traps: mingw zlib installs as `libzlib`, but libpng
   `configure` hardcodes `-lz` — the libpng recipe symlinks
   `libz.* → libzlib.*` in `$PREFIX` first (commented, additive).
@@ -262,6 +269,12 @@ Rules:
   `--host=<triplet>` and `--build=x86_64-pc-linux-gnu` (python's configure
   errors out without an explicit `--build`; others guess fine but
   uniformity wins).
+- Every system exports `TARGET_TRIPLET`, the target identity for hand-written
+  (FFmpeg-family) `configure` scripts, which have no `--host`/`--build`: a
+  libvpx-style tuple such as `arm64-android-gcc` (note libvpx's `arm64`, not
+  autoconf's `aarch64`), and empty on native where the host is detected.
+  Recipes pass it in their own build system's option (`--target=$TARGET_TRIPLET`).
+  Never fold these into `$AUTOCONF_CONFIGURE_FLAGS`; autoconf rejects them.
 - `--prefix=$OUT` / `-DCMAKE_INSTALL_PREFIX=$OUT` (install target),
   search flags point at `$PREFIX` (where deps landed).
 - Keep values short: build long ones by appending

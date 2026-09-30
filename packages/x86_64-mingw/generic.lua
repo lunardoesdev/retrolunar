@@ -41,6 +41,10 @@ return system({
         AUTOCONF_CONFIGURE_FLAGS="--host=x86_64-w64-mingw32 --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
+        # Hand-written configure (libvpx) has no --host/--build and needs an
+        # explicit --target; the tuple is a system fact, not a recipe one.
+        TARGET_TRIPLET="x86_64-w64-mingw32"
+        export TARGET_TRIPLET
         CMAKE_TOOLCHAIN_FILE="$SYSDIR/x86_64-w64-mingw32-toolchain.cmake"
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
