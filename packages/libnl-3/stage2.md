@@ -138,9 +138,9 @@ listed, files read — nothing built).
 
 | expected artifact | the one check that proves it |
 | --- | --- |
-| `$PREFIX/lib/libnl-3.a`, `libnl-route-3.a`, `libnl-idiag-3.a`, `libnl-genl-3.a`, `libnl-nf-3.a`, `libnl-xfrm-3.a` | `ls $PREFIX/lib/libnl-*-3.a \| wc -l` → `6` |
+| `$PREFIX/lib/libnl-3.a`, `libnl-route-3.a`, `libnl-idiag-3.a`, `libnl-genl-3.a`, `libnl-nf-3.a`, `libnl-xfrm-3.a` | `ls $PREFIX/lib/libnl*.a \| wc -l` → `6` |
 | `$PREFIX/lib/libnl-3.a` contents | `llvm-nm --defined-only $PREFIX/lib/libnl-3.a` shows `T nl_socket_alloc` (`lib/socket.c:227`) |
-| **nothing links `-ldl`** | `llvm-nm --undefined-only $PREFIX/lib/libnl-*-3.a \| grep -c dlopen` → `0` |
+| **nothing links `-ldl`** | `llvm-nm --undefined-only $PREFIX/lib/libnl*.a \| grep -c dlopen` → `0` |
 | `$PREFIX/include/libnl3/netlink/socket.h` (+ ~190 more) | `test -f`; `ls $PREFIX/include/libnl3/netlink/route/link.h` for a header that needs the grammar |
 | `$PREFIX/lib/pkgconfig/libnl-3.0.pc` and 5 siblings, **no `libnl-cli-3.0.pc`** | `pkg-config --modversion libnl-3.0` → `3.12.0`; `ls $PREFIX/lib/pkgconfig \| wc -l` → `6` |
 | `$PREFIX/share/man/man8/` — 6 pages | `ls $PREFIX/share/man/man8 \| wc -l` → `6` (the `.8` files ship pre-generated in `man/`, verified) |
