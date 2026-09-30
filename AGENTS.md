@@ -240,6 +240,11 @@ Rules:
   `packages/libvpx/android.lua`; ffmpeg ignores `$CFLAGS`/`$LDFLAGS`, so
   `packages/ffmpeg/android.lua` passes them as `--extra-cflags`/
   `--extra-ldflags`.
+- Meson recipes: pass `-Ddefault_library=static` (meson builds shared by
+  default, and a target prefix has no loader path for a versioned object),
+  and do **not** add `DESTDIR` to the install step — `$MESON_FLAGS` already
+  carries `--prefix=$OUT`, so `DESTDIR=$OUT ninja install` writes to
+  `$OUT$OUT`. `packages/fribidi/generic.lua` is the worked example.
 - On Android the *compiler* is the source of truth, not the build system:
   the NDK's API-level wrappers predefine `__ANDROID__` and
   `__ANDROID_MIN_SDK_VERSION__` (the API level itself). A project that
