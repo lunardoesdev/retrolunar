@@ -235,6 +235,37 @@ Rules:
   `cmake --build build --parallel 1`. `make -j1` was once rejected as a
   correctness requirement across five packages, and the resulting
   "fixes" were edits to correct recipes for no reason.)
+  Rewriting a *generated* artifact the build itself just produced, under
+  `$OUT`, is not patching an upstream source and is allowed: use `awk`
+  plus `cp`, never `sed -i`. That line is where upstream inputs end and
+  our own build output begins — a `.pc` written by `cmake --install` into
+  `$OUT` is an artifact we made, and the loader already rewrites that
+  same file for `$OUT`→`$PREFIX` (`src/loader.lua:454-468`), so a recipe
+  correcting a field in it is doing by hand what the loader does
+  mechanically. What the no-patch rule forbids is editing a file that came
+  *out of* the upstream tree — a source, a template, a `CMakeLists.txt` —
+  because then the recipe no longer builds upstream, it builds a fork.
+  **Scope it tightly: `awk` is permitted only on a generated file under
+  `$OUT`, never in `$WORK` and never in the unpacked upstream tree.** A
+  bare "awk is allowed" would make text-hacking upstream the path of
+  least resistance. `packages/glog/generic.lua` is the worked example:
+  `libglog.pc.in:11` is a literal `Cflags: -I${includedir}` with no
+  `@variable@`, so no cmake option reaches it, and the recipe rewrites the
+  *generated* `libglog.pc` in `$OUT` to add `-DGLOG_USE_GLOG_EXPORT`.
+- A cmake project whose platform logic is gated on a variable our
+  toolchain files suppress must have that variable set by the recipe. Our
+  toolchain files deliberately set `CMAKE_SYSTEM_NAME` to `Linux` to keep
+  cmake out of its own NDK integration, so the `ANDROID` variable cmake
+  derives from it is never set and an `if (ANDROID)` branch in the
+  project's own `CMakeLists.txt` never fires. Set it explicitly in
+  `packages/<name>/<sys>.lua` — it is a platform fact, so it cannot live
+  in the system-neutral fallback (`-DANDROID=ON` in
+  `packages/glog/android.lua`). Then prove it is link-metadata-only:
+  build twice, with and without the flag, and `cmp` the archives. glog's
+  are byte-identical, which is what licenses keeping the flag out of
+  `generic.lua`. `packages/glog/stage3.md` records the full evidence,
+  including the archive sizes and the one cmake-internal side effect
+  (`Compiler/Clang.cmake:84`), so a reader does not have to reproduce it.
 - Autotools timestamp guard after every `./configure` (tarball mtimes
   trigger `aclocal-1.17` re-runs we don't have):
   `touch aclocal.m4 configure <the package's own config template>` +
