@@ -1,7 +1,9 @@
 require("readline")
 require("bash@source")
 
-return {
+-- Found for every Android target through the systems' recipe_fallbacks,
+-- so there is no per-target copy of this recipe.
+return recipe({
     build = [[
         cp -r $NESTDIR/source/bash/* .
         # Bash's host-side helper uses a bool typedef; GCC 16 needs GNU17.
@@ -11,4 +13,4 @@ return {
         make -j1
         make install
     ]]
-}
+})
