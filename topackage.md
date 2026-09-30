@@ -123,7 +123,14 @@ as "roughly how often a developer reaches for it".
 - [x] Brotli 1.1.0 (static libbrotlienc/libbrotlidec/libbrotlicommon plus the brotli/brotlicli tools; archive members are elf64-littleaarch64; pkg-config --modversion libbrotlienc reports 1.1.0. Needed -lm: the zopfli encoder path calls log2(), which Bionic keeps out of libc, so the Android systems now carry it in LDFLAGS)
 - [x] Snappy 1.2.2 (static libsnappy.a, archive members are elf64-littleaarch64. Note: 1.2.2 installs a CMake package config, not snappy.pc, so consumers link -lsnappy or use find_package)
 - [ ] Zopfli
-- [ ] ISA-L
+- [ ] ISA-L (blocked: Makefile.unx is a native-build makefile. Its arch and
+  host_cpu come from uname, so on an x86-64 build machine it selects x86 SIMD
+  sources and adds -fcf-protection, which aarch64 rejects; forcing them to the
+  target switches it to AS=$(CC) -D__ASSEMBLY__, and then its crc/igzip aarch64
+  assembly fails to assemble under the NDK clang integrated assembler.
+  Separately make.inc probes for -lpthread and, when the probe fails, still
+  leaves -lpthread on the link line, which no Android sysroot can satisfy.
+  All three need upstream changes, and no-patch is the rule)
 - [x] xxHash 0.8.2 (static libxxhash.a, xxhsum tool, libxxhash.pc reporting 0.8.2; archive members are elf64-littleaarch64. Note: the CMake build lives in cmake_unofficial/, and it needs -DCMAKE_POLICY_VERSION_MINIMUM=3.5 under cmake 4.x)
 - [x] Zlib-ng 2.2.4 (static libz-ng.a with the plain zlib API, ZLIB_COMPAT=OFF; pkg-config --modversion zlib-ng reports 2.2.4; archive members are elf64-littleaarch64)
 - [ ] Minizip
