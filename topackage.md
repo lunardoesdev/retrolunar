@@ -124,7 +124,7 @@ as "roughly how often a developer reaches for it".
 - [x] Snappy 1.2.2 (static libsnappy.a, archive members are elf64-littleaarch64. Note: 1.2.2 installs a CMake package config, not snappy.pc, so consumers link -lsnappy or use find_package)
 - [ ] Zopfli
 - [ ] ISA-L
-- [ ] xxHash
+- [x] xxHash 0.8.2 (static libxxhash.a, xxhsum tool, libxxhash.pc reporting 0.8.2; archive members are elf64-littleaarch64. Note: the CMake build lives in cmake_unofficial/, and it needs -DCMAKE_POLICY_VERSION_MINIMUM=3.5 under cmake 4.x)
 - [ ] Zlib-ng
 - [ ] Minizip
 - [ ] minizip-ng
