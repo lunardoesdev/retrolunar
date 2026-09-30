@@ -12,7 +12,7 @@ return recipe({
             --disable-libuuid \
             --disable-uuidd \
             --disable-fsck
-        touch aclocal.m4 configure config.h.in
+        touch aclocal.m4 configure lib/config.h.in lib/dirpaths.h.in
         find . -name 'Makefile.in' | xargs touch
         make -j1
         make -j1 install

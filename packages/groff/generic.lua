@@ -19,9 +19,9 @@ return recipe({
         # netpbm tools (xpmtoppm/pnmtops), which are not in the nest.
         # Refresh the timestamp so the shipped file is used as-is.
         touch doc/gnu.eps
-        touch aclocal.m4 configure config.h.in
+        touch aclocal.m4 configure src/include/config.hin
         find . -name 'Makefile.in' | xargs touch
-        make
+        make -j1
         make install
     ]]
 })

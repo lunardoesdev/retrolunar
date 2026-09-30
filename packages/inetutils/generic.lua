@@ -14,7 +14,7 @@ return recipe({
             --disable-rlogin \
             --disable-rsh \
             --disable-servers
-        touch aclocal.m4 configure config.h.in
+        touch aclocal.m4 configure config.hin
         find . -name 'Makefile.in' | xargs touch
         # telnet/sys_bsd.c is the only file in the tree that uses struct termios
         # and the tcgetattr/tcsetattr/cfgetospeed/cfgetispeed family without
@@ -33,14 +33,14 @@ return recipe({
         # ../libtelnet/libtelnet.a, so those libraries are built first. telnet's
         # own AM_CPPFLAGS is restated because a command-line assignment would
         # otherwise replace it and drop -I../libinetutils.
-        make -C lib
-        make -C libinetutils
-        make -C libtelnet
-        make -C libicmp
-        make -C libls
-        make -C telnet AM_CPPFLAGS="-DTERMCAP -DLINEMODE -DKLUDGELINEMODE -DENV_HACK -I. -I.. -I../lib -I../libinetutils -include ../termios-first.h"
-        make
-        make install
+        make -j1 -C lib
+        make -j1 -C libinetutils
+        make -j1 -C libtelnet
+        make -j1 -C libicmp
+        make -j1 -C libls
+        make -j1 -C telnet AM_CPPFLAGS="-DTERMCAP -DLINEMODE -DKLUDGELINEMODE -DENV_HACK -I. -I.. -I../lib -I../libinetutils -include ../termios-first.h"
+        make -j1
+        make -j1 install
         # LFS moves ifconfig from sbin to bin; $OUT/sbin holds it, so link it
         # next to the other user-facing programs instead of using mv.
         ln -s ../sbin/ifconfig $OUT/bin/ifconfig

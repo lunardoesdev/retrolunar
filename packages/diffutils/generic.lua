@@ -4,7 +4,7 @@ return recipe({
     build = [[
         cp -r $NESTDIR/source/diffutils/* .
         ./configure $AUTOCONF_CONFIGURE_FLAGS
-        touch aclocal.m4 configure config.h.in
+        touch aclocal.m4 configure lib/config.hin
         find . -name 'Makefile.in' | xargs touch
         # Build the tools first, so the manual pages shipped in the release
         # stay newer than them and are not regenerated with help2man.

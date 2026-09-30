@@ -16,12 +16,30 @@ return recipe({
         # libtextstyle/lib/libtextstyle.sym.in:41 exports.
         CFLAGS="$CFLAGS -Wno-error=incompatible-function-pointer-types"
         export CFLAGS
-        ./configure $AUTOCONF_CONFIGURE_FLAGS \
-            --disable-static \
-            --docdir=$OUT/share/doc/gettext-0.26
-        touch aclocal.m4 configure config.h.in
+        # No --docdir: upstream's default already lands under $OUT, and
+        # pinning a version here would go stale on a bump.
+        ./configure $AUTOCONF_CONFIGURE_FLAGS --disable-static
+        # Gettext has no top-level config header by design: configure.ac has
+        # no AC_CONFIG_HEADERS at all, and the five real templates live in
+        # the sub-configures (gettext-runtime, gettext-runtime/intl,
+        # gettext-runtime/libasprintf, gettext-tools, libtextstyle). So
+        # sweep for them rather than naming a path that does not exist.
+        #
+        # The find sweeps below are deliberate, not untidy. Enumerating the
+        # five template paths by hand would cover exactly this release and
+        # would need editing on every version that adds or drops a
+        # sub-configure; a name sweep covers all five and any future one with
+        # no change. Prefer find over enumeration here -- do not "tidy" it
+        # back into a list of paths.
+        touch aclocal.m4 configure
+        find . -name 'config.h.in' | xargs touch
+        # The sub-configures have their own maintainer rules over configure
+        # and aclocal.m4; sweep those too so autoheader/autoconf cannot
+        # re-run from a tarball mtime.
+        find . -name 'configure' | xargs touch
+        find . -name 'aclocal.m4' | xargs touch
         find . -name 'Makefile.in' | xargs touch
-        make
+        make -j1
         make install
         # preloadable_libintl.so is meant to be LD_PRELOADed; the
         # installed mode 0644 would be useless.

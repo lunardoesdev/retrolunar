@@ -8,7 +8,7 @@ return recipe({
         # the optional uchardet encoding probe, which the generic build would
         # otherwise try to compile.
         ./configure $AUTOCONF_CONFIGURE_FLAGS --enable-static --disable-shared --with-pic --disable-python-bindings
-        touch aclocal.m4 configure config.h.in
+        touch aclocal.m4 configure include/config.h.in
         find . -name 'Makefile.in' | xargs touch
         make -j1
         make install

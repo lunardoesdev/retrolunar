@@ -10,9 +10,9 @@ return recipe({
         # staging dir, so PERL5LIB points it at the installed module tree.
         export PERL5LIB="$NATIVE_PREFIX/lib/perl5/5.44/core_perl"
         ./configure $AUTOCONF_CONFIGURE_FLAGS
-        touch aclocal.m4 configure config.h.in
+touch aclocal.m4 configure
         find . -name 'Makefile.in' | xargs touch
-        make
+        make -j1
         make install
     ]]
 })

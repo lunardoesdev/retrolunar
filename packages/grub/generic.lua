@@ -40,7 +40,7 @@ return recipe({
             --sysconfdir=/etc \
             --disable-efiemu \
             --disable-werror
-        touch aclocal.m4 configure config.h.in
+        touch aclocal.m4 configure config-util.h.in
         # gentpl.py regenerates Makefile.util.am from Makefile.util.def, and
         # Makefile.in depends on it, so a freshly regenerated copy would make
         # make re-run automake looking for automake-1.16, which this prefix
@@ -49,7 +49,7 @@ return recipe({
         # triggers.
         touch Makefile.util.am
         find . -name 'Makefile.in' | xargs touch
-        make TARGET_CFLAGS+=" -fno-pic" TARGET_LDFLAGS+=" -fno-pie -no-pie"
+        make -j1 TARGET_CFLAGS+=" -fno-pic" TARGET_LDFLAGS+=" -fno-pie -no-pie"
         make install
     ]]
 })
