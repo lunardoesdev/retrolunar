@@ -184,7 +184,7 @@ as "roughly how often a developer reaches for it".
 - [ ] libxml2
 - [ ] libxslt
 - [ ] graphite2
-- [ ] FriBidi
+- [x] FriBidi 1.0.16 (static libfribidi.a; pkg-config --modversion fribidi reports 1.0.16; archive members are elf64-littleaarch64. Note: the recipe adds -Ddefault_library=static, since meson builds shared by default and omits DESTDIR, since --prefix is already $OUT)
 - [ ] harfbuzz
 - [ ] fontconfig
 - [ ] cairo
