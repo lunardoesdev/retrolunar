@@ -31,6 +31,11 @@ return system({
         # meson need to resolve a compiler that is not in PATH.
         SYSROOT="$TOOLCHAIN/sysroot"
         export SYSROOT
+        # The NDK wrapper names carry the API level; this is the same
+        # fact as a number, for anything that needs it as one
+        # (__ANDROID_API__, OpenSSL's target configs, tooling).
+        ANDROID_API=35
+        export ANDROID_API
 
         # --- toolchain: NDK clang wrappers + llvm binutils ---
         # Wrappers already encode the API level (35).
