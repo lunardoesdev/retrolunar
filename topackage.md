@@ -165,7 +165,7 @@ as "roughly how often a developer reaches for it".
 - [ ] nghttp2
 - [ ] libssh2
 - [ ] libgit2
-- [ ] mbedTLS
+- [x] mbedTLS 3.6.3 (static libmbedtls, libmbedx509 and libmbedcrypto; pkg-config --modversion mbedtls reports 3.6.3; archive members are elf64-littleaarch64. Programs and tests off)
 - [ ] wolfSSL
 - [ ] libsodium
 - [ ] Botan
