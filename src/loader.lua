@@ -3,9 +3,9 @@
 --   relative: require("./x"), require("../x") -- file relative to the
 --     requiring file's directory, then RETROLUNAR_LIB (default: cwd).
 --   pack@sys: require("hello@source") -- packages/hello/source.lua if
---     it exists, else packages/hello/generic.lua, else error. Explicit
+--     it exists, then system recipe fallbacks, then
+--     packages/hello/generic.lua, else error. Explicit
 --     pack@native resolves through DEFAULT_SYSTEM; it is not a system.
--- Package modules cache by canonical pack@system identity.
 do
   local _require = require
   local _loaded = package.loaded
@@ -178,6 +178,29 @@ do
     _loaded[key] = res
     return res
   end
+  local function recipe_path(pack, sys, rs)
+    local function specific_path(name)
+      for _, r in ipairs(rs) do
+        local path = r .. '/' .. pack .. '/' .. name .. '.lua'
+        if exists(path) then return path end
+      end
+    end
+    local path = specific_path(sys)
+    if path then return path end
+    local ok, st = pcall(require, sys .. '@generic')
+    if ok and type(st) == 'table' and type(st.recipe_fallbacks) == 'table' then
+      for _, fallback in ipairs(st.recipe_fallbacks) do
+        if type(fallback) == 'string' and fallback ~= '' then
+          path = specific_path(fallback)
+          if path then return path end
+        end
+      end
+    end
+    for _, r in ipairs(rs) do
+      path = r .. '/' .. pack .. '/generic.lua'
+      if exists(path) then return path end
+    end
+  end
   function require(mod, ...)
     if type(mod) ~= 'string' then return _require(mod, ...) end
     local pack, sys = mod:match('^([^@]+)@([^@]+)$')
@@ -191,21 +214,11 @@ do
       local canon = pack .. '@' .. sys
       if _loaded[canon] ~= nil then return _loaded[canon] end
       local rs = roots()
-      for _, r in ipairs(rs) do
-        local specific = r .. '/' .. pack .. '/' .. sys .. '.lua'
-        if exists(specific) then
-          return run_with_sys(sys, specific, canon, function()
-            return load_cached(canon, specific, canon)
-          end)
-        end
-      end
-      for _, r in ipairs(rs) do
-        local generic = r .. '/' .. pack .. '/generic.lua'
-        if exists(generic) then
-          return run_with_sys(sys, generic, canon, function()
-            return load_cached(canon, generic, canon)
-          end)
-        end
+      local path = recipe_path(pack, sys, rs)
+      if path then
+        return run_with_sys(sys, path, canon, function()
+          return load_cached(canon, path, canon)
+        end)
       end
       error("module '" .. mod .. "' not found", 2)
     end
@@ -214,21 +227,11 @@ do
       local canon = mod .. '@' .. isys
       if _loaded[canon] ~= nil then return _loaded[canon] end
       local rs = roots()
-      for _, r in ipairs(rs) do
-        local specific = r .. '/' .. mod .. '/' .. isys .. '.lua'
-        if exists(specific) then
-          return run_with_sys(isys, specific, canon, function()
-            return load_cached(canon, specific, canon)
-          end)
-        end
-      end
-      for _, r in ipairs(rs) do
-        local generic = r .. '/' .. mod .. '/generic.lua'
-        if exists(generic) then
-          return run_with_sys(isys, generic, canon, function()
-            return load_cached(canon, generic, canon)
-          end)
-        end
+      local path = recipe_path(mod, isys, rs)
+      if path then
+        return run_with_sys(isys, path, canon, function()
+          return load_cached(canon, path, canon)
+        end)
       end
       -- No package file: fall through (stdlib like string, io).
     end

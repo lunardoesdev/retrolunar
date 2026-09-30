@@ -115,8 +115,8 @@ Notes for CI:
 ## Packages and systems
 
 See [AGENTS.md](AGENTS.md) for the full guide: `require("pack")` vs
-`require("pack@sys")`, writing `source.lua` (fetch-only) and
-`generic.lua` (build) recipes, writing `system({ setup = ... })`
-environments (toolchain, search paths, build-system defaults), recipe
-hygiene rules (no `sed`/patches/`/dev/null`/parallel make), and the
-known platform walls (API 21 vs 24+, X11-only or NDK-removed APIs).
+`require("pack@sys")` (including ordered `recipe_fallbacks`), writing
+`source.lua` (fetch-only) and `generic.lua` (build) recipes, and writing
+`system({ ... })` environments (toolchain, search paths, build-system
+defaults), recipe hygiene rules (no `sed`/patches/`/dev/null`/parallel
+make), and the known platform walls (API 21 vs 24+, X11-only or NDK-removed APIs).

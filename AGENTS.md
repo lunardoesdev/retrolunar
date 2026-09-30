@@ -49,9 +49,11 @@ upstream sources.
 
 Three `require` forms:
 
-- `require("pack@sys")` — exact: `packages/pack/sys.lua`, else
-  `packages/pack/generic.lua`, else error. Runs the chunk with `SYSTEM=sys`.
-  The magic `require("pack@native")` resolves `sys` to the compile-time
+- `require("pack@sys")` — searches `packages/pack/sys.lua`, then the
+  requested system's `recipe_fallbacks` entries in order, then
+  `packages/pack/generic.lua`, else errors. The selected recipe runs with
+  `SYSTEM=sys`, so a fallback recipe still targets the requested system.
+  `require("pack@native")` resolves `sys` to the compile-time
   `DEFAULT_SYSTEM` (`clang-native` by default, overridable with
   `-DRETROLUNAR_DEFAULT_SYSTEM=...`); it is an alias, not a separate target
   system. Its cache and recipe identity are the same as the resolved
@@ -235,8 +237,11 @@ Rules:
 
 ## Writing a system (`<sys>/generic.lua`)
 
-Single `system({ setup = [[...]] })` with `VAR="value"` + grouped
-`export` lines. Sections with `# ---` comments:
+Single `system({ recipe_fallbacks = {"family"}, setup = [[...]] })` with
+`VAR="value"` + grouped `export` lines. `recipe_fallbacks` is optional; it
+lists package-recipe system names in lookup order, after the exact target
+system and before each package's `generic.lua`. Sections with `# ---`
+comments:
 
 ```sh
 # --- toolchain: NDK clang wrappers + llvm binutils ---

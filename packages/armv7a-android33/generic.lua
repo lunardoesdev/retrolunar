@@ -4,6 +4,7 @@
 -- packages landed. cmake/meson files live next to this recipe and are
 -- referenced via $SYSDIR. Plain VAR=value + grouped `export` lines.
 return system({
+    recipe_fallbacks = {"android"},
     setup = [[
         # --- NDK discovery: newest version under $ANDROID_HOME/ndk ---
         # Shell glob, no ls: aliases like eza would mangle ls output.
