@@ -18,8 +18,15 @@ return recipe({
         # project does not do, so the default location under the prefix is
         # kept instead.
         cd src
+        # --host comes from the system's $HOST_TRIPLET, never a literal.
+        # It used to be hardcoded aarch64-linux-android, which on
+        # x86_64-android35 configured an aarch64 tree into an x86_64 prefix
+        # and on x86_64-mingw handed an aarch64 triplet to
+        # x86_64-w64-mingw32-gcc. $HOST_TRIPLET expands to exactly that same
+        # literal on the aarch64-android systems, so the one family that
+        # worked is unaffected.
         ./configure --prefix="$OUT" \
-            --host=aarch64-linux-android \
+            --host="$HOST_TRIPLET" \
             --with-features=normal \
             --enable-multibyte \
             --with-tlibdir="$PREFIX/lib"
