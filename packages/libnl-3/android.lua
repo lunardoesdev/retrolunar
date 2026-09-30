@@ -22,9 +22,27 @@ return recipe({
         # fails with `ld.lld: error: unable to find library -lpthread`. There
         # is no stub at any API level.
         ./configure $AUTOCONF_CONFIGURE_FLAGS --enable-static --disable-shared --with-pic --enable-cli=no --disable-pthreads
+        # Bionic and glibc disagree about who owns the in_addr_t typedef,
+        # and libnl's own private headers lose the race. libnl compiles with
+        # `-I$(srcdir)/include/linux-private` (Makefile.am:350), which comes
+        # before the sysroot on the search path, so `#include <netinet/in.h>`
+        # -- which libnl's include/base/nl-base-utils.h:20 does -- pulls
+        # Bionic's netinet/in.h, which includes <linux/in.h> (netinet/in.h:39),
+        # and THAT resolves to libnl's copy rather than the NDK's.
+        # libnl's include/linux-private/linux/in.h defines `struct in_addr`
+        # (line 92) but never typedefs in_addr_t; the NDK's
+        # <linux/in.h> would have reached <bits/in_addr.h>, which does
+        # (`typedef uint32_t in_addr_t`, bits/in_addr.h:40). glibc has no such
+        # problem because its own netinet/in.h:30 carries the typedef, so
+        # this is Android-only. Without it, arpa/inet.h:40 fails with
+        # "unknown type name 'in_addr_t'" and libnl-3 does not compile at all.
+        # This is a build-time define only: it is not baked into the shipped
+        # headers, and consumers are unaffected because nothing shadows
+        # <linux/in.h> outside libnl's own tree. It restores exactly the
+        # definition Bionic would have supplied.
         touch aclocal.m4 configure include/config.h.in
         find . -name 'Makefile.in' | xargs touch
-        make -j1
+        make -j1 CFLAGS="$CFLAGS -Din_addr_t=uint32_t"
         make install
     ]]
 })
