@@ -45,6 +45,11 @@ upstream sources.
   prefix per system, `$NESTDIR/source/<name>/` holds unpacked sources,
   `$NESTDIR/tmp/` holds per-package `WORK`/`OUT` stage dirs.
 
+- Before writing a recipe, check that `packages/<name>/` does not already
+  exist: `topackage.md` is a backlog, not an inventory, so a package can be
+  present (sdl2, for instance) without appearing in either list. Adding a
+  package means creating new files, never rewriting an existing recipe.
+
 ## The loader (`src/loader.lua`)
 
 Three `require` forms:
