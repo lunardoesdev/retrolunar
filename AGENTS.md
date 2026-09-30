@@ -550,6 +550,24 @@ system-level blocker in `stage3.md` and is NOT worked around in the recipe.
 The builder is the only role that commits. The adder and the reviewer leave
 their work uncommitted for the builder to pick up.
 
+A check written in `stage3.md` is re-run by a builder who did not write it
+and who cannot tell a false failure from a real one, so a check must have
+been run: paste the output of every command against the real prefix. A
+count carried over from a forecast is not evidence. Three ways these have
+been wrong on correct builds: a glob that cannot match what it counts
+(`libnl-*-3.a` does not match `libnl-3.a`); a count scoped to a directory
+several packages share (`share/man/man3` holds man-pages, systemd-man-pages,
+tcl and libseccomp, so `ls share/man/man3 | wc -l` measures the prefix —
+filter by filename, e.g. `grep -c '^seccomp_'`); and an expected value
+taken from the review rather than the tree (stb, 19 against upstream's 20).
+State the expected value in the document so a reader can compare it
+against reality instead of inferring intent, and make sure the assertion
+is not inverted — `[ count -gt 1 ]` fails the correct single-file install.
+Five such checks sat in this tree until one `grep` across
+`packages/*/stage*.md` for globs feeding `wc -l` and for count expectations
+found them all; that audit takes minutes, so run it after every build wave
+rather than once.
+
 ### Hand-offs
 
 A REJECT goes back to the adder that wrote the recipe, who fixes it and
