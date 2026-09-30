@@ -127,7 +127,7 @@ as "roughly how often a developer reaches for it".
 - [x] xxHash 0.8.2 (static libxxhash.a, xxhsum tool, libxxhash.pc reporting 0.8.2; archive members are elf64-littleaarch64. Note: the CMake build lives in cmake_unofficial/, and it needs -DCMAKE_POLICY_VERSION_MINIMUM=3.5 under cmake 4.x)
 - [x] Zlib-ng 2.2.4 (static libz-ng.a with the plain zlib API, ZLIB_COMPAT=OFF; pkg-config --modversion zlib-ng reports 2.2.4; archive members are elf64-littleaarch64)
 - [ ] Minizip
-- [ ] minizip-ng
+- [x] minizip-ng 4.0.10 (static libminizip-ng.a; pkg-config --modversion minizip-ng reports 4.0.10; archive members are elf64-littleaarch64. Linked against the zlib-ng, bzip2, xz, zstd and OpenSSL in this prefix - MZ_FETCH_LIBS is off, which is the switch that stops it downloading and installing its own copies; ZipCrypto, PKWARE and AES encryption on; tools and tests off)
 - [ ] zziplib
 - [x] libarchive 3.8.1 (static libarchive.a with the zlib, bzip2, xz, lz4 and zstd backends from this prefix; pkg-config --modversion libarchive reports 3.8.1; archive members are elf64-littleaarch64. Note: archive.h includes private Android syscall wrappers from contrib/android/include, so the recipe appends that to CPPFLAGS)
 - [ ] lzop
