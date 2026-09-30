@@ -129,7 +129,7 @@ as "roughly how often a developer reaches for it".
 - [ ] Minizip
 - [ ] minizip-ng
 - [ ] zziplib
-- [ ] libarchive
+- [x] libarchive 3.8.1 (static libarchive.a with the zlib, bzip2, xz, lz4 and zstd backends from this prefix; pkg-config --modversion libarchive reports 3.8.1; archive members are elf64-littleaarch64. Note: archive.h includes private Android syscall wrappers from contrib/android/include, so the recipe appends that to CPPFLAGS)
 - [ ] lzop
 - [ ] lrzip
 - [ ] p7zip
