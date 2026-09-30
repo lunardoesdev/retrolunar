@@ -110,7 +110,7 @@ REJECT
 | --- | --- |
 | `$PREFIX/lib/*/libkmod.so` | `find $PREFIX -name 'libkmod*'` — after the DESTDIR fix this must be non-empty |
 | `$PREFIX/include/libkmod.h` | `test -f $PREFIX/include/libkmod.h` |
-| no man pages | `-Dmanpages=false`; `ls $PREFIX/share/man` empty |
+| no man pages from kmod | `-Dmanpages=false`; kmod's own pages are the 10 named in `man/meson.build:3-14` (`man5`: `depmod.d`, `modprobe.d`, `modules.dep`; `man8`: `depmod`, `insmod`, `kmod`, `lsmod`, `modinfo`, `modprobe`, `rmmod`), so check **those** are absent: `! ls $PREFIX/share/man/man5/{depmod.d,modprobe.d,modules.dep}.5 $PREFIX/share/man/man8/{depmod,insmod,kmod,lsmod,modinfo,modprobe,rmmod}.8` must print nothing. **Do not** use `ls $PREFIX/share/man` — that directory is shared with `man-pages`, `systemd-man-pages` and `tcl` and is never empty, so the older form failed against any prefix built by more than one package |
 | **the check that catches the bug itself** | `find "$OUT" -maxdepth 1 -name "$PREFIX"` must print nothing — a nested `$OUT$PREFIX` directory is the DESTDIR signature |
 
 Build on `clang-native` first: it is the only system in the tree where both

@@ -247,7 +247,7 @@ Corroboration:
 | the man1 page | `ls $PREFIX/share/man/man1/scmp_sys_resolver.1` | present |
 | **no shared library** | `ls $PREFIX/lib/libseccomp.so*` | `no libseccomp.so (correct)` — the stale one is gone |
 | **no `tools/` binary** | `ls $PREFIX/bin/scmp_sys_resolver` | `absent (correct)` |
-| shared man tree intact | `find $PREFIX/share/man -type f \| wc -l` | `5181` = 5145 before + 36 from this package |
+| shared man tree intact (**build-time snapshot — do not re-run as a check**) | `find $PREFIX/share/man -type f \| wc -l` **at the time of this build** | `5181` = 5145 before + 36 from this package. This figure was true when written and is **not** a re-runnable assertion: `share/man` is prefix-wide and grows with every package that installs man pages (libnl-3 later added 36 more in `man8`, taking the total to 5194). It is recorded because the *arithmetic* is the evidence — 5145 before, 5181 after, delta exactly 36 — not because the total is a stable property. A package-scoped equivalent that stays true is `ls $PREFIX/share/man/man3 \| grep -c '^seccomp_'` → `35` |
 
 **Size coincidence, again.** The rebuilt `libseccomp.a` is *also* 281708 bytes,
 identical to the deleted stale one. Byte count would have been a false pass for

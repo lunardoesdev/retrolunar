@@ -30,7 +30,7 @@ claiming an independent verdict.
 
 | expected artifact | the one check that proves it |
 | --- | --- |
-| `$PREFIX/lib/libevent.a`, `libevent_core.a`, `libevent_extra.a` | `ls $PREFIX/lib/libevent*.a` — three static archives |
+| `$PREFIX/lib/libevent.a`, `libevent_core.a`, `libevent_extra.a` (plus `libevent_openssl.a` and `libevent_pthreads.a`) | `ls $PREFIX/lib/libevent*.a \| wc -l` → **5**, all static: `libevent.a`, `libevent_core.a`, `libevent_extra.a`, `libevent_openssl.a`, `libevent_pthreads.a`. This row previously said "three static archives" and named only the first three; the other two are real and are built whenever `--enable-openssl` and pthreads are on, which this recipe enables. A plain wrong count here, not a scoping problem — nothing about it is shared with another package |
 | `$PREFIX/include/event2/event.h` | `test -f $PREFIX/include/event2/event.h` |
 | `$PREFIX/lib/pkgconfig/libevent.pc`, `libevent_core.pc`, `libevent_extra.pc` | `pkg-config --modversion libevent` |
 | openssl really linked | `llvm-nm --undefined-only $PREFIX/lib/libevent_extra.a \| grep -c SSL_` → non-zero, proving `--enable-openssl` took |

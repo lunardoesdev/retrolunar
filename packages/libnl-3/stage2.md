@@ -142,8 +142,8 @@ listed, files read — nothing built).
 | `$PREFIX/lib/libnl-3.a` contents | `llvm-nm --defined-only $PREFIX/lib/libnl-3.a` shows `T nl_socket_alloc` (`lib/socket.c:227`) |
 | **nothing links `-ldl`** | `llvm-nm --undefined-only $PREFIX/lib/libnl*.a \| grep -c dlopen` → `0` |
 | `$PREFIX/include/libnl3/netlink/socket.h` (+ ~190 more) | `test -f`; `ls $PREFIX/include/libnl3/netlink/route/link.h` for a header that needs the grammar |
-| `$PREFIX/lib/pkgconfig/libnl-3.0.pc` and 5 siblings, **no `libnl-cli-3.0.pc`** | `pkg-config --modversion libnl-3.0` → `3.12.0`; `ls $PREFIX/lib/pkgconfig \| wc -l` → `6` |
-| `$PREFIX/share/man/man8/` — 6 pages | `ls $PREFIX/share/man/man8 \| wc -l` → `6` (the `.8` files ship pre-generated in `man/`, verified) |
+| `$PREFIX/lib/pkgconfig/libnl-3.0.pc` and 5 siblings, **no `libnl-cli-3.0.pc`** | `pkg-config --modversion libnl-3.0` → `3.12.0`; `ls $PREFIX/lib/pkgconfig \| grep -c '^libnl'` → `6`. The `grep` is load-bearing: `lib/pkgconfig` holds every `.pc` in the prefix, so a bare `wc -l` counts ~330 packages' files, not this one's |
+| `$PREFIX/share/man/man8/` — 6 pages | `ls $PREFIX/share/man/man8 \| grep -cE '^(nl-\|genl-ctrl-list)'` → `6` (the `.8` files ship pre-generated in `man/`, verified). The filter is load-bearing for the same reason as the line above: `share/man` is shared by `man-pages`, `systemd-man-pages`, `tcl` and libseccomp, so a bare `wc -l` reports ~230. **Note the two-part pattern** — libnl's pages are five `nl-*` plus `genl-ctrl-list.8`, so a filter of `'^nl-'` alone silently returns 5 and would manufacture a fresh phantom defect. **This is the same defect that was corrected in `packages/libseccomp/stage2.md` on the same day, in another package** — which is the argument for auditing rather than fixing only the one in front of you |
 | `$PREFIX/etc/libnl/pktloc`, `$PREFIX/etc/libnl/classid` | `test -f` — `pkgsysconf_DATA`, so the exact dir depends on `sysconfdir`; check `find $PREFIX -name pktloc` |
 | **no** `$PREFIX/bin`, **no** `libnl-cli-3.a` | `test ! -e $PREFIX/bin` — proves `--enable-cli=no` took effect |
 
