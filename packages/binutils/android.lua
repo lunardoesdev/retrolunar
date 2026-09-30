@@ -1,7 +1,9 @@
 require("zlib")
 require("binutils@source")
 
-return {
+-- Found for every Android target through the systems' recipe_fallbacks,
+-- so there is no per-target copy of this recipe.
+return recipe({
     build = [[
         cp -r $NESTDIR/source/binutils/* .
         # Android lacks pthread cancellation APIs used by gprofng.
@@ -20,4 +22,4 @@ return {
         make -j1 tooldir="$OUT"
         make -j1 tooldir="$OUT" install
     ]]
-}
+})
