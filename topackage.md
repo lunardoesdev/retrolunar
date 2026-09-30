@@ -223,7 +223,7 @@ as "roughly how often a developer reaches for it".
 - [ ] glog
 - [ ] Log4cxx
 - [x] Catch2 3.8.1 (static libCatch2.a and libCatch2Main.a, catch2/ headers and a CMake package config; archive members are elf64-littleaarch64. No pkg-config file upstream, so use find_package(Catch2))
-- [ ] doctest
+- [x] doctest 2.4.11 (header-only: include/doctest/doctest.h plus a CMake package config. Nothing compiled, so it is identical on every system)
 - [ ] GoogleTest
 - [ ] Google-Benchmark
 - [ ] Criterion3
