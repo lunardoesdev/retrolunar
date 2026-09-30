@@ -138,7 +138,7 @@ as "roughly how often a developer reaches for it".
 - [ ] lcms2
 - [ ] draco
 - [ ] meshoptimizer
-- [ ] cJSON
+- [x] cJSON 1.7.18 (static libcjson.a, archive members are elf64-littleaarch64; cJSON_add and cJSON_pretty installed. Note: upstream ships no pkg-config file, so consumers link -lcjson)
 - [ ] Jansson
 - [ ] json-c
 - [ ] nlohmann-json
