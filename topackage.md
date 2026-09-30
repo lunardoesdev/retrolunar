@@ -155,7 +155,7 @@ as "roughly how often a developer reaches for it".
 - [ ] msgpack-c
 - [ ] Cap'n
 - [ ] Proto
-- [ ] FlatBuffers
+- [x] FlatBuffers 25.2.10 (static libflatbuffers.a plus the flatc schema compiler and its code generators; pkg-config --modversion flatbuffers reports 25.2.10; archive members are elf64-littleaarch64. Note: flatc is built for the target and never run here; generate code with a host flatc)
 - [ ] protobuf
 - [ ] protobuf-c
 - [ ] nanopb
