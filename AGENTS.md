@@ -237,7 +237,9 @@ Rules:
   `PKG_CONFIG_ALLOW_CROSS=1` + `RUSTFLAGS="-L $PREFIX/lib"`;
   libvpx configure wants `--extra-cflags="--sysroot=$SYSROOT"`, not
   `-isystem` (breaks libc++ include order) — that line lives in
-  `packages/libvpx/android.lua`.
+  `packages/libvpx/android.lua`; ffmpeg ignores `$CFLAGS`/`$LDFLAGS`, so
+  `packages/ffmpeg/android.lua` passes them as `--extra-cflags`/
+  `--extra-ldflags`.
 - Name-mismatch traps: mingw zlib installs as `libzlib`, but libpng
   `configure` hardcodes `-lz` — the libpng recipe symlinks
   `libz.* → libzlib.*` in `$PREFIX` first (commented, additive).
@@ -283,6 +285,20 @@ Rules:
   is empty for cargo, why the NDK glob avoids `ls`).
 - cmake toolchain + meson crossfile go next to `generic.lua`, referenced
   as `$SYSDIR/<file>` (never generated heredocs in the script).
+- Cross systems add `-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY` and
+  `-DCMAKE_MAKE_PROGRAM=$(command -v make)` to `$CMAKE_FLAGS`. cmake's
+  compiler check links a test program and runs it, which a cross target
+  binary cannot do here (and running one would be emulation, which we never
+  do); and cmake picks the make program out of `$PREFIX`, where
+  `bin/make` is a target binary that would need an emulator too.
+- A meson crossfile names no cross tools: meson takes them from the
+  environment, so the system must export `$CC`, `$CXX`, `$AR`, `$STRIP`
+  and `$LD` as full paths. Only host programs (pkg-config) are listed.
+- A non-native system NEVER prepends its toolchain to `PATH`. The cross
+  tools are named explicitly (`$CC`, `$CXX`, `$AR`, `$STRIP`, ...), and a
+  cross bin dir at the front of `PATH` makes host tools (cmake, make, and
+  anything they spawn) run cross binaries. The emitter's `$NATIVE_PREFIX`
+  entry stays first, so host helpers come from the native prefix.
 - New API level = copy the whole `<arch>-androidNN/` dir, rename every
   `NN` in wrapper names, `--host`, file names, error strings. Existing
   `android21` dirs stay untouched.

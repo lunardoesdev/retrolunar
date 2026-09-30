@@ -41,15 +41,28 @@ return system({
         AUTOCONF_CONFIGURE_FLAGS="--host=x86_64-w64-mingw32 --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
-        # Hand-written configure (libvpx) has no --host/--build and needs an
-        # explicit --target; the tuple is a system fact, not a recipe one.
+        # --- target facts for builds that cannot detect their target ---
+        # FFmpeg-style configure scripts (libvpx, ffmpeg) are not autoconf
+        # and reject --host/--build, and each spells the target its own way:
+        # libvpx takes --target=$TARGET_TRIPLET, ffmpeg --arch/--target-os.
         TARGET_TRIPLET="x86_64-w64-mingw32"
-        export TARGET_TRIPLET
+        TARGET_ARCH="x86_64"
+        TARGET_OS="mingw32"
+        export TARGET_TRIPLET TARGET_ARCH TARGET_OS
         CMAKE_TOOLCHAIN_FILE="$SYSDIR/x86_64-w64-mingw32-toolchain.cmake"
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
+        # cmake's compiler check links a test program and then runs it. A
+        # cross target binary cannot run here, and running one would be
+        # emulation, which we never do: link a static library instead.
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+        # cmake runs the make program it finds, and it would find ours:
+        # $PREFIX/bin/make is a target binary, so running it would need an
+        # emulator. Pin the host make.
+        CMAKE_MAKE_PROGRAM="$(command -v make)"
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
         export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
         MESON_CROSS_FILE="$SYSDIR/crossfile-x86_64-mingw.ini"
         MESON_FLAGS="--prefix=$OUT"

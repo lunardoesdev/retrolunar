@@ -23,23 +23,27 @@ return system({
         export NDK
         TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
         export TOOLCHAIN
-        PATH="$TOOLCHAIN/bin:$PATH"
-        export PATH
+        TOOLBIN="$TOOLCHAIN/bin"
+        export TOOLBIN
+        # $TOOLBIN is deliberately NOT prepended to PATH: a cross toolchain
+        # at the front of PATH makes host tools run cross binaries. Every
+        # tool is named by full path instead, which is also what cmake and
+        # meson need to resolve a compiler that is not in PATH.
         SYSROOT="$TOOLCHAIN/sysroot"
         export SYSROOT
 
         # --- toolchain: NDK clang wrappers + llvm binutils ---
         # Wrappers already encode the API level (24).
-        CC="i686-linux-android24-clang"
-        CXX="i686-linux-android24-clang++"
-        AR="llvm-ar"
-        RANLIB="llvm-ranlib"
-        LD="ld.lld"
-        STRIP="llvm-strip"
-        OBJCOPY="llvm-objcopy"
-        READELF="llvm-readelf"
-        NM="llvm-nm"
-        OBJDUMP="llvm-objdump"
+        CC="$TOOLBIN/i686-linux-android24-clang"
+        CXX="$TOOLBIN/i686-linux-android24-clang++"
+        AR="$TOOLBIN/llvm-ar"
+        RANLIB="$TOOLBIN/llvm-ranlib"
+        LD="$TOOLBIN/ld.lld"
+        STRIP="$TOOLBIN/llvm-strip"
+        OBJCOPY="$TOOLBIN/llvm-objcopy"
+        READELF="$TOOLBIN/llvm-readelf"
+        NM="$TOOLBIN/llvm-nm"
+        OBJDUMP="$TOOLBIN/llvm-objdump"
         export CC CXX AR RANLIB LD STRIP OBJCOPY READELF NM OBJDUMP
 
         # --- search paths: our prefix first, NDK sysroot second ---
@@ -72,12 +76,15 @@ return system({
         AUTOCONF_CONFIGURE_FLAGS="--host=i686-linux-android --build=x86_64-pc-linux-gnu"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
-        # --- hand-written configure target tuple ---
-        # FFmpeg-style configure (libvpx) has no --host/--build and needs an
-        # explicit --target. The spelling is libvpx's own, so it lives here
-        # and recipes pass it through unchanged.
+        # --- target facts for builds that cannot detect their target ---
+        # FFmpeg-style configure scripts (libvpx, ffmpeg) are not autoconf
+        # and reject --host/--build, and each spells the target its own way:
+        # libvpx takes --target=$TARGET_TRIPLET, ffmpeg --arch/--target-os.
+        # ffmpeg calls 32-bit x86 "x86"; the autoconf triplet keeps i686.
         TARGET_TRIPLET="x86-android-gcc"
-        export TARGET_TRIPLET
+        TARGET_ARCH="x86"
+        TARGET_OS="android"
+        export TARGET_TRIPLET TARGET_ARCH TARGET_OS
         # Autoconf probes link a test program and run it, which cannot work
         # while cross compiling. Bionic defines these as inline functions.
         export ac_cv_func_ffsl=yes
@@ -87,6 +94,15 @@ return system({
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
+        # cmake's compiler check links a test program and then runs it. A
+        # cross target binary cannot run here, and running one would be
+        # emulation, which we never do: link a static library instead.
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+        # cmake runs the make program it finds, and it would find ours:
+        # $PREFIX/bin/make is an Android binary, so running it would need an
+        # emulator. Pin the host make.
+        CMAKE_MAKE_PROGRAM="$(command -v make)"
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
         export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
         MESON_CROSS_FILE="$SYSDIR/crossfile-i686-android24.ini"
         MESON_FLAGS="--prefix=$OUT"
