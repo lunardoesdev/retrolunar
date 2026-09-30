@@ -144,7 +144,7 @@ as "roughly how often a developer reaches for it".
 - [x] nlohmann-json 3.11.3 (header-only: include/nlohmann/json.hpp plus a CMake package config and nlohmann_json.pc. Nothing is compiled, so it is identical on every system)
 - [ ] RapidJSON
 - [x] SimdJSON 3.12.3 (static libsimdjson.a, normal headers plus the generated single simdjson.h; pkg-config --modversion simdjson reports 3.12.3; archive members are elf64-littleaarch64. Note: only the library target is built: upstream adds tests/benchmarks/fuzzers on 64-bit with no option to disable, and those host programs link -lrt, absent in Bionic)
-- [ ] YAML-CPP
+- [x] YAML-CPP 0.8.0 (static libyaml-cpp.a; pkg-config --modversion yaml-cpp reports 0.8.0; archive members are elf64-littleaarch64)
 - [ ] libyaml
 - [x] TinyXML-2 10.0.0 (static libtinyxml2.a; pkg-config --modversion tinyxml2 reports 10.0.0; archive members are elf64-littleaarch64)
 - [ ] Pugixml
