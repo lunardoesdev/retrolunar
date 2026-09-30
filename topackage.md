@@ -133,7 +133,7 @@ as "roughly how often a developer reaches for it".
 - [ ] lzop
 - [ ] lrzip
 - [ ] p7zip
-- [ ] giflib
+- [x] giflib 5.2.2 (static libgif.a and gif_lib.h; archive members are elf64-littleaarch64. Upstream ships a plain makefile, not configure, and no pkg-config file, so the recipe hands make the system's CC/CFLAGS/LDFLAGS/PREFIX and consumers link -lgif)
 - [ ] jasper
 - [ ] lcms2
 - [ ] draco
