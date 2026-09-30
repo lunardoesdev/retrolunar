@@ -109,6 +109,10 @@ stb_textedit.h  stb_tilemap_editor.h  stb_truetype.h  stb_voxel_render.h
 
 `stage2.md`'s check would have reported a **false failure** on a correct
 build. Recorded as a forecast off-by-one, not a recipe or build defect.
+(`stage2.md`'s expectations were later corrected to 20 and 22 once the build
+had proved this, so the two files no longer disagree — the sentences above
+are left as written, as the record of what was predicted against what was
+measured.)
 `stb_image_resize_test` is a directory upstream and is correctly not copied —
 the recipe names the files explicitly, so nothing unexpected lands.
 
