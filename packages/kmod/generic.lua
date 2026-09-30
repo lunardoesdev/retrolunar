@@ -9,17 +9,21 @@ return recipe({
         # Man pages are turned off because man/meson.build:1 does an
         # unconditional find_program('scdoc'), which is not in this prefix.
         #
-        # Only the xz backend is enabled: the prefix ships liblzma.pc but has
-        # no zlib.pc and no libzstd.pc, so meson's pkg-config lookup cannot
-        # resolve the other two.
+        # The xz backend is enabled because the prefix ships liblzma.pc; zstd
+        # is off for the same reason liblzma is preferred, so the backend set
+        # does not vary with whatever the host happens to have installed.
+        # kmod's zlib backend is an Android question and lives in
+        # android.lua, not here.
         meson setup build $MESON_FLAGS \
             -Dbashcompletiondir= \
             -Dfishcompletiondir= \
             -Dmanpages=false \
-            -Dzlib=disabled \
             -Dxz=enabled \
             -Dzstd=disabled
-        meson compile -C build
-        DESTDIR="$OUT" meson install -C build
+        meson compile -C build --jobs 1
+        # No DESTDIR: meson's --prefix is already $OUT (it comes from
+        # $MESON_FLAGS), so DESTDIR would concatenate the two and the
+        # install would land in $OUT$OUT.
+        meson install -C build
     ]]
 })

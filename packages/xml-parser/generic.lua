@@ -16,13 +16,20 @@ return recipe({
         #
         # The generated Makefile records the native perl's own -march/-O flags
         # and its CORE include dir, both x86-64, so OPTIMIZE/perl_inc are reset
-        # to target-appropriate values on the make line. The libc-only feature
+        # to target-appropriate values on the make line. The whole make line
+        # takes its values from the system - $CC, $LD and now $CFLAGS - with
+        # only perl_inc and to_cflags being package-local corrections, each for
+        # a stated Bionic reason. OPTIMIZE was a hardcoded "-O2 -fPIC" until
+        # this pass, which was a stale copy of the systems' own defaults: it
+        # silently dropped -DANDROID and the sysroot -isystem, and nothing
+        # would have reported the drift if the systems changed their
+        # optimisation level. The libc-only feature
         # macros that perl's CORE/config.h carries are turned off for the same
         # reason: Bionic has no crypt.h or shadow.h, and Bionic's <sys/sem.h>
         # already provides union semun, which perl.h would otherwise redefine.
         export PERL5LIB="$NATIVE_PREFIX/lib/perl5/5.44/core_perl"
         perl Makefile.PL EXPATINCPATH=$PREFIX/include EXPATLIBPATH=$PREFIX/lib
-        make CC="$CC" LD="$LD" OPTIMIZE="-O2 -fPIC" \
+        make CC="$CC" LD="$LD" OPTIMIZE="$CFLAGS" \
             perl_inc="$NATIVE_PREFIX/lib/perl5/5.44/core_perl" \
             to_cflags="-D_I_CRYPT_H=0 -DHAS_UNION_SEMUN=1"
         make install
