@@ -138,7 +138,7 @@ as "roughly how often a developer reaches for it".
 - [x] lcms2 2.17 (static liblcms2.a with the JPEG and TIFF plug-ins from this prefix; pkg-config --modversion lcms2 reports 2.17. Utilities and Python bindings off)
 - [x] draco 1.5.7 (static libdraco.a with encoder and decoder, draco/ headers; archive members are elf64-littleaarch64. gtest suite off. No pkg-config file upstream, so link -ldraco)
 - [ ] meshoptimizer
-- [x] cJSON 1.7.18 (static libcjson.a, archive members are elf64-littleaarch64; cJSON_add and cJSON_pretty installed. Note: upstream ships no pkg-config file, so consumers link -lcjson)
+- [x] cJSON 1.7.19 (static libcjson.a; archive members are elf64-littleaarch64; cJSON_add and cJSON_pretty installed. Upstream ships no pkg-config file, so consumers link -lcjson and use find_package(cJSON) instead. Note: the installed CMake config needed the loader's staging-path rewrite - it originally pointed at the build's staging dir, which broke the first consumer, msgpack-c)
 - [x] Jansson 2.14 (static libjansson.a; pkg-config --modversion jansson reports 2.14; archive members are elf64-littleaarch64)
 - [ ] json-c
 - [x] nlohmann-json 3.11.3 (header-only: include/nlohmann/json.hpp plus a CMake package config and nlohmann_json.pc. Nothing is compiled, so it is identical on every system)

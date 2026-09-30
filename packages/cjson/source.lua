@@ -1,9 +1,9 @@
 return recipe({
-    version = "1.7.18",
+    version = "1.7.19",
     build = [[
         mkdir -p dl
         if [ ! -f dl/cjson.tar.gz ]; then
-          curl -fSL -C - -o dl/cjson.tar.gz "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.18.tar.gz"
+          curl -fSL -C - -o dl/cjson.tar.gz "https://github.com/DaveGamble/cJSON/archive/refs/tags/v1.7.19.tar.gz"
         fi
         rm -rf src
         mkdir -p src
