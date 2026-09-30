@@ -562,11 +562,84 @@ $ llvm-readelf -d /tmp/glogconsumer | grep NEEDED
  0x0000000000000001 (NEEDED)  Shared library: [libc.so]
 ```
 
-The `liblog.so` `NEEDED` entry is the visible form of the fix: the link
-picked Bionic's liblog out of the sysroot and recorded it as a runtime
-dependency, which is how every Android program consumes it. `libglog.a`
-still has its one undefined `__android_log_write` — correct, and now
-resolved at consumer link time instead of being an error.
+### The dynamic-section contrast — the strongest single piece of evidence
+
+The `liblog.so` `NEEDED` entry above is the visible form of the fix, but on
+its own it proves less than it looks: `NEEDED [liblog.so]` is simply what a
+program that reaches `__android_log_write` ends up with. So here is the
+contrast, all three cases built from the **same** `/tmp/glog-before.cc`
+source and the **same** `consumer.o`.
+
+**Case 1 — BEFORE, flags only from the pre-fix `.pc`.** The `.pc` as it
+stood before this change was reconstructed verbatim in a scratch directory
+(`/tmp/glog-before/libglog.pc`, prefix still pointing at the real prefix)
+and `pkg-config` asked about *that*:
+
+```
+$ PKG_CONFIG_LIBDIR=/tmp/glog-before PKG_CONFIG_PATH= pkg-config --libs --static libglog
+-L/home/si/ond/git/retrolunar/nest/aarch64-android24/lib -lglog -pthread
+
+$ …/aarch64-linux-android24-clang++ consumer.o -o consumer -L…/lib -lglog -pthread
+ld.lld: error: undefined symbol: __android_log_write
+>>> referenced by utilities.cc
+>>>               utilities.cc.o:(google::glog_internal_namespace_::AlsoErrorWrite(google::LogSeverity, char const*, char const*)) in archive /home/si/ond/git/retrolunar/nest/aarch64-android24/lib/libglog.a
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+link exit: 1
+
+$ ls -l consumer
+ls: cannot access 'consumer': No such file or directory
+```
+
+**There is no BEFORE dynamic section, because there is no BEFORE binary.**
+That is the finding, not a gap in the record: a `pkg-config`-only consumer
+of the pre-fix `.pc` produces no ELF file at all, so nothing downstream —
+including `llvm-readelf` — has anything to inspect.
+
+**Case 2 — BEFORE plus the Android system's own `LDFLAGS`** (`-llog` added
+by hand, which is exactly what the systems' `LDFLAGS="$LDFLAGS -llog"` line
+gives a consumer that links through this build system). This is the
+binary the pre-fix package was *always* able to produce, just not by the
+route a `pkg-config` consumer takes:
+
+```
+$ …/aarch64-linux-android24-clang++ consumer.o -o consumer_ldflags -L…/lib -lglog -pthread -llog
+exit 0
+$ llvm-readelf -d consumer_ldflags | grep NEEDED
+ 0x0000000000000001 (NEEDED)  Shared library: [liblog.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libc++_shared.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libm.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libdl.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libc.so]
+```
+
+**Case 3 — AFTER, flags only from the fixed `.pc`:**
+
+```
+$ …/aarch64-linux-android24-clang++ glog-before.cc -o consumer_after -I…/include -DGLOG_USE_GLOG_EXPORT -L…/lib -lglog -pthread -llog
+exit 0
+$ llvm-readelf -d consumer_after | grep NEEDED
+ 0x0000000000000001 (NEEDED)  Shared library: [liblog.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libc++_shared.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libm.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libdl.so]
+ 0x0000000000000001 (NEEDED)  Shared library: [libc.so]
+```
+
+And the check that makes the contrast conclusive:
+
+```
+$ cmp consumer_ldflags consumer_after
+IDENTICAL
+```
+
+**Case 2 and case 3 are byte-identical binaries.** The `pkg-config` route
+and the build-system `LDFLAGS` route now deliver the same artifact, and
+the only thing that changed is *which file told the linker about liblog*.
+Before this change the two routes were not two routes at all: only case 2
+existed, and case 1 produced nothing.
+
+`libglog.a` still has its one undefined `__android_log_write` — correct,
+and now resolved at consumer link time instead of being an error.
 
 ## Rerun proves the new stamp is real
 
