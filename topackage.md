@@ -148,7 +148,7 @@ as "roughly how often a developer reaches for it".
 - [ ] libyaml
 - [x] TinyXML-2 10.0.0 (static libtinyxml2.a; pkg-config --modversion tinyxml2 reports 10.0.0; archive members are elf64-littleaarch64)
 - [ ] Pugixml
-- [ ] tomlplusplus
+- [x] tomlplusplus 3.4.0 (header-only: include/toml++/toml.hpp plus a CMake package config. Nothing compiled, so it is identical on every system)
 - [ ] toml11
 - [ ] libconfig
 - [ ] libcbor
