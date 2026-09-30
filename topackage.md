@@ -210,7 +210,7 @@ as "roughly how often a developer reaches for it".
 - [ ] SpeexDSP
 - [ ] libmysofa
 - [ ] soundtouch
-- [ ] fmt
+- [x] fmt 11.1.4 (static libfmt.a, fmt/ headers and fmt.pc reporting 11.1.4; archive members are elf64-littleaarch64)
 - [ ] spdlog
 - [ ] plog
 - [ ] glog
