@@ -121,7 +121,7 @@ as "roughly how often a developer reaches for it".
 ## Android candidates (100)
 
 - [x] Brotli 1.1.0 (static libbrotlienc/libbrotlidec/libbrotlicommon plus the brotli/brotlicli tools; archive members are elf64-littleaarch64; pkg-config --modversion libbrotlienc reports 1.1.0. Needed -lm: the zopfli encoder path calls log2(), which Bionic keeps out of libc, so the Android systems now carry it in LDFLAGS)
-- [ ] Snappy
+- [x] Snappy 1.2.2 (static libsnappy.a, archive members are elf64-littleaarch64. Note: 1.2.2 installs a CMake package config, not snappy.pc, so consumers link -lsnappy or use find_package)
 - [ ] Zopfli
 - [ ] ISA-L
 - [ ] xxHash
