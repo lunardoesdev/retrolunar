@@ -147,7 +147,7 @@ as "roughly how often a developer reaches for it".
 - [x] YAML-CPP 0.8.0 (static libyaml-cpp.a; pkg-config --modversion yaml-cpp reports 0.8.0; archive members are elf64-littleaarch64)
 - [x] libyaml 0.2.5 (static libyaml.a; pkg-config --modversion yaml-0.1 reports 0.2.5; archive members are elf64-littleaarch64. Note: fetched from pyyaml.org, since the GitHub tag archive ships no generated configure; the recipe falls back to the GitHub release asset)
 - [x] TinyXML-2 10.0.0 (static libtinyxml2.a; pkg-config --modversion tinyxml2 reports 10.0.0; archive members are elf64-littleaarch64)
-- [ ] Pugixml
+- [x] Pugixml 1.15 (static libpugixml.a; pkg-config --modversion pugixml reports 1.15; archive members are elf64-littleaarch64)
 - [x] tomlplusplus 3.4.0 (header-only: include/toml++/toml.hpp plus a CMake package config. Nothing compiled, so it is identical on every system)
 - [ ] toml11
 - [ ] libconfig
