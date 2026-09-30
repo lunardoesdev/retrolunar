@@ -161,7 +161,7 @@ as "roughly how often a developer reaches for it".
 - [ ] nanopb
 - [ ] c-ares
 - [ ] libevent
-- [ ] libuv
+- [x] libuv 1.51.0 (static libuv.a, uv.h and uv/, CMake package config; archive members are elf64-littleaarch64. Note: 1.51.0 installs no pkg-config file, so link -luv or use find_package(libuv))
 - [ ] nghttp2
 - [ ] libssh2
 - [ ] libgit2
