@@ -167,7 +167,7 @@ as "roughly how often a developer reaches for it".
 - [ ] libgit2
 - [x] mbedTLS 3.6.3 (static libmbedtls, libmbedx509 and libmbedcrypto; pkg-config --modversion mbedtls reports 3.6.3; archive members are elf64-littleaarch64. Programs and tests off)
 - [ ] wolfSSL
-- [ ] libsodium
+- [ ] libsodium (blocked: upstream no longer serves the Unix release tarball — https://www.libsodium.org/releases/libsodium-1.0.20.tar.gz now 307-redirects to the documentation site — and the GitHub release 1.0.20-RELEASE ships only mingw and msvc assets. The GitHub tag archive has no generated configure, so it would need autoreconf with the native autotools)
 - [ ] Botan
 - [ ] nettle
 - [ ] libgcrypt
