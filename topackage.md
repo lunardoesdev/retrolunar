@@ -211,7 +211,7 @@ as "roughly how often a developer reaches for it".
 - [ ] libmysofa
 - [ ] soundtouch
 - [x] fmt 11.1.4 (static libfmt.a, fmt/ headers and fmt.pc reporting 11.1.4; archive members are elf64-littleaarch64)
-- [ ] spdlog
+- [x] spdlog 1.15.3 (static libspdlog.a; pkg-config --modversion spdlog reports 1.15.3; archive members are elf64-littleaarch64. Needs fmt, which is now in the prefix; built with SPDLOG_FMT_EXTERNAL so the tree has one formatting engine)
 - [ ] plog
 - [ ] glog
 - [ ] Log4cxx
