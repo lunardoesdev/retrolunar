@@ -7,7 +7,7 @@ return recipe({
         ./configure $AUTOCONF_CONFIGURE_FLAGS --with-build-python=python3 --disable-shared --without-ensurepip --disable-test-modules
         touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' -o -name 'Makefile.pre.in' | xargs touch
-        make
+        make -j1
         make install
     ]]
 })

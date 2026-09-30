@@ -13,7 +13,7 @@ return recipe({
             --enable-obsolete-api=glibc
         touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' | xargs touch
-        make
+        make -j1
         make install
     ]]
 })

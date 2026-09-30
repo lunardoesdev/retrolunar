@@ -27,6 +27,10 @@ return recipe({
         # the emitter publishes them, so the resulting perl is self-consistent
         # and needs no PERL5LIB. The program prefix stays $OUT for the same
         # reason: the binaries are staged and then copied verbatim.
+        # Skip perl's own build-time zlib/bzip2 linkage: the modules it
+        # builds with the *host* toolchain must not link target libraries
+        # out of $PREFIX. Both are in this prefix, so the target perl still
+        # gets working zlib and bzip2 from its runtime search path.
         export BUILD_ZLIB=False
         export BUILD_BZIP2=0
         sh Configure -des \
@@ -45,7 +49,7 @@ return recipe({
             -Dman1dir=$OUT/share/man/man1 \
             -Dman3dir=$OUT/share/man/man3 \
             -Dusethreads
-        make
+        make -j1
         make install
     ]]
 })
