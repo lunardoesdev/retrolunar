@@ -146,7 +146,7 @@ as "roughly how often a developer reaches for it".
 - [x] SimdJSON 3.12.3 (static libsimdjson.a, normal headers plus the generated single simdjson.h; pkg-config --modversion simdjson reports 3.12.3; archive members are elf64-littleaarch64. Note: only the library target is built: upstream adds tests/benchmarks/fuzzers on 64-bit with no option to disable, and those host programs link -lrt, absent in Bionic)
 - [ ] YAML-CPP
 - [ ] libyaml
-- [ ] TinyXML2
+- [x] TinyXML-2 10.0.0 (static libtinyxml2.a; pkg-config --modversion tinyxml2 reports 10.0.0; archive members are elf64-littleaarch64)
 - [ ] Pugixml
 - [ ] tomlplusplus
 - [ ] toml11
