@@ -224,7 +224,7 @@ as "roughly how often a developer reaches for it".
 - [ ] Log4cxx
 - [x] Catch2 3.8.1 (static libCatch2.a and libCatch2Main.a, catch2/ headers and a CMake package config; archive members are elf64-littleaarch64. No pkg-config file upstream, so use find_package(Catch2))
 - [x] doctest 2.4.11 (header-only: include/doctest/doctest.h plus a CMake package config. Nothing compiled, so it is identical on every system)
-- [ ] GoogleTest
+- [x] GoogleTest 1.17.0 (static libgtest.a, libgtest_main.a, libgmock.a and libgmock_main.a; pkg-config --modversion gtest and gmock both report 1.17.0; archive members are elf64-littleaarch64. Its own test suites off. Note: do not pass -DINSTALL_GTEST=OFF - googletest's install rules live inside that option's guard, so it installs nothing)
 - [ ] Google-Benchmark
 - [ ] Criterion3
 
