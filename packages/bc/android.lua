@@ -1,7 +1,9 @@
 require("readline")
 require("bc@source")
 
-return {
+-- Found for every Android target through the systems' recipe_fallbacks,
+-- so there is no per-target copy of this recipe.
+return recipe({
     build = [[
         cp -r $NESTDIR/source/bc/* .
         # Bc's generators run on the host, while the main compiler targets Android.
@@ -11,4 +13,4 @@ return {
         make -j1 LDFLAGS="$LDFLAGS -lreadline -ltermcap"
         make install
     ]]
-}
+})
