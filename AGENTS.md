@@ -240,6 +240,16 @@ Rules:
   `packages/libvpx/android.lua`; ffmpeg ignores `$CFLAGS`/`$LDFLAGS`, so
   `packages/ffmpeg/android.lua` passes them as `--extra-cflags`/
   `--extra-ldflags`.
+- On Android the *compiler* is the source of truth, not the build system:
+  the NDK's API-level wrappers predefine `__ANDROID__` and
+  `__ANDROID_MIN_SDK_VERSION__` (the API level itself). A project that
+  branches on `__ANDROID__` may still expect its build system to set a
+  matching variable, and ours deliberately does not (`CMAKE_SYSTEM_NAME`
+  stays `Linux`). Expect to add the project's own private include paths by
+  hand — libarchive needs `contrib/android/include` on `CPPFLAGS` for
+  exactly this reason. Note also that cmake's `CPPFLAGS` environment
+  initialisation is policy-gated (CMP0126) while Autotools always reads it,
+  so an appended include path is more reliably delivered to `./configure`.
 - Name-mismatch traps: mingw zlib installs as `libzlib`, but libpng
   `configure` hardcodes `-lz` — the libpng recipe symlinks
   `libz.* → libzlib.*` in `$PREFIX` first (commented, additive).
