@@ -179,7 +179,7 @@ as "roughly how often a developer reaches for it".
 - [ ] hwloc
 - [ ] libnuma
 - [ ] libunwind
-- [ ] utf8proc
+- [x] utf8proc 2.9.0 (static libutf8proc.a, Unicode tables compiled in; pkg-config --modversion libutf8proc reports 2.9.0; archive members are elf64-littleaarch64)
 - [ ] ICU4C
 - [ ] libxml2
 - [ ] libxslt
