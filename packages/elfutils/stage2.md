@@ -246,3 +246,48 @@ file is what the next person reads. The recipe comment has the answer;
 necessary: `config/Makefile.am:37` has `pkgconfig_DATA = libelf.pc libdw.pc`,
 so the `.pc` is installed by `make -C config install`, *not* by
 `make -C libelf install`. Keeping the copy is right.
+
+---
+
+## Addendum (after the build) — the rework's premise was tested and failed
+
+Added after `stage3.md`; the review text above is left as written, because it
+is the record of what was argued at review time. This section states what the
+build proved.
+
+**The open question the rework raised has now been answered, and it goes
+against the rework.** The rework argued that `-C libelf` needed no configure
+switch, because "the package could plausibly build on a target that merely
+lacks argp". `stage3.md` built it on `aarch64-android24` and it does not:
+
+```
+checking for library containing argp_parse... no
+configure: error: in '/home/si/ond/git/retrolunar/nest/tmp/work-YX94fe':
+configure: error: failed to find argp_parse
+See 'config.log' for more details
+```
+
+`configure.ac:650-658` is top-level and unconditional — verified directly, not
+inferred from the log: line 648 closes its `AS_IF`, line 650 opens a fresh
+statement, and nothing between them is an `AS_IF`/`AC_ARG_ENABLE`/`AM_CONDITIONAL`.
+`AC_OUTPUT` therefore never runs, so no `config.h` and no `Makefile` exist and
+`make -C libelf` has nothing to descend into. The "libelf compiles standalone"
+argument is true about libelf and irrelevant to the build order: `./configure`
+is what produces the `config.h` libelf needs.
+
+**What survives from the rework.** The `make -j1 -C libelf` /
+`make -j1 -C libelf install` scoping is correct and stays. It is not a rescue
+— the blocker is upstream of it — but it does stop `clang-native` (the one
+system whose glibc has `<argp.h>`) compiling `libdw`, `libdwfl`, `libstack`,
+`libbacktrace`, `backends/` and the full test suite just to discard them. That
+is the cost this review named, and it is still worth naming it for.
+
+**What does not survive.** Any suggestion that elfutils is "pending" or
+"plausibly buildable" on Android. It is not buildable on Bionic at any API
+level: `argp_parse` is a glibc extension with no `__INTRODUCED_IN` gate, unlike
+`nl_langinfo` (API 26) or `posix_spawn` (API 28), so no new
+`aarch64-androidNN` target helps. There is no switch, no cache answer that
+works, and the only real routes — an upstream patch to `configure.ac:650-658`
+or a stub `libargp` — are forbidden by AGENTS.md. The honest outcome is that
+elfutils 0.193 does not build here, and the record should say so rather than
+leave a reader looking for the switch that does not exist.

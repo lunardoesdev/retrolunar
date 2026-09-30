@@ -76,9 +76,15 @@ esac
 ```
 
 argp is a glibc extension. Bionic does not provide it at any API level, so no
-new `androidNN` target changes the outcome and no flag can pre-set
-`ac_cv_search_argp_parse` from the command line in a way upstream honours.
-elfutils 0.193 ships no switch that drops the probe.
+new `androidNN` target changes the outcome. elfutils 0.193 ships no switch that
+drops the probe.
+
+Pre-setting `ac_cv_search_argp_parse` on the `./configure` line *is* honoured
+by the shipped script (`configure:9615`), so an earlier phrasing of this file
+— "no flag can pre-set it in a way upstream honours" — was wrong about the
+mechanism. It changes nothing, though: `no` re-triggers the same failure and
+any other value just moves it to link time. Worked out in full under
+"What this means for the fix" below.
 
 The claim that all 47 `--enable/--disable/--with/--without` options in
 `./configure --help` were enumerated and none drops `libdw`, `libdwfl`,
@@ -128,19 +134,62 @@ would fail on a missing `Makefile` even if `set -eu` were somehow satisfied.
 ### What this means for the fix
 
 `make -C libelf` is not reachable on Android without something that gets past
-the argp probe. The options are all upstream changes or system changes, and
-neither is the builder's to make:
+the argp probe. Every option is an upstream change, a system change, or a lie,
+and none of the first two is the builder's to make:
 
 - **Upstream**: make the argp probe conditional on the components that need
-  it, so a `--disable-libdw --disable-libdwfl --disable-libdebuginfod`
-  configuration does not require argp at all. That is the change that would
-  make the recipe's stated intent achievable.
-- **Not viable as a recipe-local workaround**: `ac_cv_search_argp_parse=no`
-  pre-set on the `./configure` line would satisfy the probe but then leave
-  `argp_LDADD` empty and every `argp_*` call unresolved at link time for
-  libdw. For a libelf-only build nothing would reference argp — but that is
-  exactly the argument that requires knowing the SUBDIRS restriction is
-  real, which upstream does not offer a switch for.
+  it, so a libelf-only configuration does not require argp at all. That is the
+  change that would make the recipe's stated intent achievable.
+
+#### Correcting this record: the cache-variable answer does not work either
+
+An earlier version of this section claimed that `ac_cv_search_argp_parse=no`
+pre-set on the `./configure` line "would satisfy the probe but then leave
+`argp_LDADD` empty". **That is wrong, in the one way that matters:** `no` is
+the value that *triggers* the failure. `configure.ac:653-657` is
+
+```
+        case "$ac_cv_search_argp_parse" in
+                no) AC_MSG_FAILURE([failed to find argp_parse]) ;;
+                -l*) argp_LDADD="$ac_cv_search_argp_parse" ;;
+                *) argp_LDADD= ;;
+        esac
+```
+
+so `=no` lands in the first arm and dies in exactly the same place. Verified
+in the shipped script, `configure:9681-9688`. Rechecked here against
+`nest/source/elfutils/` rather than assumed.
+
+The cache *is* honoured, though — `configure:9615` reads
+`if test ${ac_cv_search_argp_parse+y}` — so a non-`no` answer does skip the
+link probe. It still buys nothing:
+
+1. The macro at `configure.ac:651` is **`AC_SEARCH_LIBS`**, not
+   `AC_CHECK_LIB`, so the cache variable is `ac_cv_search_argp_parse`
+   (`autoconf/libs.m4:49` derives `ac_cv_search_$1`). The
+   `AC_CHECK_LIB`-style spelling `ac_cv_lib_argp_parse_argp_parse` is never
+   read and would be silently inert.
+2. `AC_SEARCH_LIBS` does prepend to `LIBS` on success (`libs.m4:69`, shipped
+   `configure:9676`) — that is what distinguishes it from `AC_CHECK_LIB`, which
+   saves and restores `LIBS`. But elfutils undoes that itself one line later
+   with `LIBS="$saved_LIBS"` (`configure.ac:652`, shipped `configure:9680`),
+   so `LIBS` is clean either way and no link is poisoned by a bare `-largp`
+   in `LIBS`. The lasting effect is `argp_LDADD`.
+3. `argp_LDADD` is substituted into real link lines: `libdw_so_LDLIBS`
+   (`libdw/Makefile.am:112`), `debuginfod_LDADD` and `debuginfod_find_LDADD`
+   (`debuginfod/Makefile.am:73,76`). No `libargp` exists on Bionic, so this
+   trades a configure-time failure for a link-time one. It is not a fix.
+4. It would not even finish configure. Two more unconditional probes follow
+   immediately — `fts_close` (`configure.ac:661`, `AC_MSG_FAILURE` at `:664`)
+   and `_obstack_free` (`configure.ac:671`, failure at `:674`). A recipe would
+   have to pre-answer three cache variables to get through `configure.ac:650-678`,
+   and the `Makefile`s they produce still reference libraries Bionic does not have.
+
+So: answering the cache variable is not a route. Neither is a new API level
+(`argp_parse` is absent at every one), nor a configure switch (there is none),
+nor a stub `libargp` or an upstream patch (both forbidden by AGENTS.md).
+**elfutils 0.193 is not buildable on Bionic.** The record should say that
+plainly rather than leave a reader hunting for a switch.
 
 ### The clang-native claim
 
@@ -149,6 +198,11 @@ clang-native, "the one system where configure succeeds". That part is
 self-consistent and untested by this build: this is an Android build and I
 did not run one. It is recorded as the recipe's claim, not as a verified
 result.
+
+Checked after the fact, on the nest, without building: `./nest/clang-native/`
+contains no `.retrolunar-elfutils` stamp and no `lib/libelf.*`, so
+clang-native has never been attempted for this package either. `stage1.md`'s
+clang-native row therefore stays **UNCERTAIN — never built**, not "will build".
 
 ## Rerun
 
@@ -160,8 +214,22 @@ print `skip`, which is the correct signal that no artifact was produced.
 No QEMU, no emulator, no `binfmt_misc` registration was used or installed.
 Every check above is static (`grep`, `ls`, `file`-level inspection of paths).
 
-## Recipe changes
+## Post-build record correction (post-review, no build)
 
-**None.** `packages/elfutils/generic.lua` is committed unmodified. The
-`-C libelf` scoping is already in the tree from the rework commit; this build
-neither added to it nor removed from it.
+The build itself changed nothing. Two follow-ups to this record were made
+afterwards, both read-only checks against `nest/source/elfutils/`:
+
+1. The "not viable as a recipe-local workaround" bullet above asserted that
+   `ac_cv_search_argp_parse=no` "would satisfy the probe". It would not — `no`
+   is the arm that fires `AC_MSG_FAILURE`. Replaced in full above, along with
+   the two further unconditional probes (`fts_close`, `_obstack_free`) that a
+   cache-answering recipe would run into next.
+2. `packages/elfutils/generic.lua`'s comment claimed `./configure` "has
+   already generated" `config.h` by the time it fails on a target. That is
+   false — this build disproved it — and the comment has been rewritten to say
+   so, and to state that the `-C libelf` scoping avoids wasted work and is the
+   shape the build would take if configure succeeded, but rescues nothing.
+   `stage1.md`'s verdict table and API-level notes were corrected to match.
+
+No new build was run for these corrections; no target binary was executed at
+any point.
