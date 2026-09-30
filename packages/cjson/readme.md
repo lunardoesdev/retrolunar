@@ -26,13 +26,23 @@ document once and allocates per node, so bound the size of what you feed it.
 
 ## What retrolunar builds
 
-`libcjson.a`, `cJSON.h` and the two utility programs, `cJSON_add` and
-`cJSON_pretty`. The upstream test program is switched off because it is a
-host-side executable.
+`libcjson.a`, `cJSON.h`, and `libcjson.pc`. The upstream test program is
+switched off because it is a host-side executable.
 
-cJSON 1.7.18 does not install a pkg-config file, so consumers reference the
-library as `-lcjson` and the header as `cjson/cJSON.h` after adding
-`$PREFIX/include`.
+The module is `libcjson`, so `pkg-config --modversion libcjson` reports
+`1.7.19`. Consumers may equally reference the library as `-lcjson` and the
+header as `cjson/cJSON.h` after adding `$PREFIX/include`, or use
+`find_package(cJSON)`.
+
+Two claims in an earlier version of this file were wrong and are corrected
+here. **`cJSON_add` and `cJSON_pretty` do not exist in 1.7.19** — the utils
+are the `cjson_utils` *library* behind `ENABLE_CJSON_UTILS`, which defaults
+OFF and is not enabled by the recipe, so nothing but the core library is
+installed. And **cJSON does install a pkg-config file**:
+`CMakeLists.txt:142-146` configures `libcjson.pc` from
+`library_config/libcjson.pc.in` and installs it, so it is inside the
+loader's `$OUT`→`$PREFIX` rewrite set. The version was also off: the recipe
+pins 1.7.19, not 1.7.18.
 
 ## Notes
 

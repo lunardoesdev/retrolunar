@@ -7,7 +7,9 @@ ships as three libraries plus two command line tools:
 - `libbrotlienc` — the encoder, including the slower Zopfli-based mode.
 - `libbrotlidec` — the decoder.
 - `libbrotlicommon` — shared dictionary, transforms and helpers.
-- `bin/brotli`, `bin/brotlicli` — the command line tools.
+- `bin/brotli` — the command line tool. There is no `brotlicli` in 1.1.0:
+  the tree has exactly one `add_executable` (CMakeLists.txt:172), `brotli`.
+  An earlier version of this line listed both.
 
 The encoder takes a quality level from 0 to 11: 0 is fastest and worst, 11
 is slowest and best. Decoding is a single call, so inflating Brotli data is
@@ -16,7 +18,7 @@ far cheaper than compressing it.
 ## What retrolunar builds
 
 Three static libraries, the `brotli/` headers, the pkg-config files
-(`libbrotlienc.pc`, `libbrotlidec.pc`, `libbrotlicommon.pc`) and both tools.
+(`libbrotlienc.pc`, `libbrotlidec.pc`, `libbrotlicommon.pc`) and the one tool.
 Everything is static: a target prefix should not carry a shared object that
 nothing on the device will load from the right soname path.
 
