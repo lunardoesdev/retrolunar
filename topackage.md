@@ -157,7 +157,7 @@ as "roughly how often a developer reaches for it".
 - [ ] Proto
 - [x] FlatBuffers 25.2.10 (static libflatbuffers.a plus the flatc schema compiler and its code generators; pkg-config --modversion flatbuffers reports 25.2.10; archive members are elf64-littleaarch64. Note: flatc is built for the target and never run here; generate code with a host flatc)
 - [ ] protobuf
-- [ ] protobuf-c
+- [ ] protobuf-c (blocked on its dependency: 1.5.1's configure requires Google protobuf >= 3.0.0, i.e. the libprotobuf C++ runtime. Google protobuf itself needs abseil, so this is a chain: abseil-cpp, then protobuf, then protobuf-c)
 - [ ] nanopb
 - [ ] c-ares
 - [x] libevent 2.1.12-stable (static libevent, libevent_core, libevent_extra and libevent_openssl against the OpenSSL in this prefix; pkg-config --modversion libevent reports 2.1.12-stable; archive members are elf64-littleaarch64)
