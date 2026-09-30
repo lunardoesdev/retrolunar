@@ -76,6 +76,13 @@ return system({
         # fails here. libm is in every Android sysroot, so -lm always costs
         # nothing and saves every package from hitting this.
         LDFLAGS="$LDFLAGS -lm"
+        # abseil's AndroidLogSink and glog's AlsoErrorWrite call
+        # __android_log_write, which lives in Bionic's liblog. Both are
+        # static archives with no link step, so the reference only surfaces
+        # at consumer link time; liblog.so is in every NDK sysroot and the
+        # symbol is API 21+, so it costs nothing. See AGENTS.md for why
+        # glog's own -llog never fires here.
+        LDFLAGS="$LDFLAGS -llog"
         export LDFLAGS
         # Look up .pc files in our prefix, then the NDK sysroot...
         PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"

@@ -348,6 +348,21 @@ Rules:
   (`FOO="$FOO more"`), one `export A B C` per section, comments
   explaining non-obvious choices (why `-isystem` is C-only, why `LDFLAGS`
   is empty for cargo, why the NDK glob avoids `ls`).
+- Android systems carry `-lm` and `-llog` in `LDFLAGS` because Bionic splits
+  both out of libc. `-llog` is the non-obvious one: abseil's `AndroidLogSink`
+  (compiled whenever `__ANDROID__` is defined) and glog's `AlsoErrorWrite` both
+  call `__android_log_write`, which is in Bionic's liblog. Both packages are
+  static-only with testing off, so neither has a link step and both BUILD fine
+  with an undefined reference in the archive; the failure only appears when a
+  *consumer* links them, and `libglog.pc` ships no `-llog`. Upstream already
+  tries to handle this — glog's `CMakeLists.txt` does
+  `target_link_libraries(glog PRIVATE log)` inside `if (ANDROID)` — but that
+  never fires here, because cmake only sets `ANDROID` when
+  `CMAKE_SYSTEM_NAME` is `Android` and our toolchain files deliberately
+  `set(CMAKE_SYSTEM_NAME Linux)`. Hence the explicit `-llog`. liblog.so is in
+  every NDK sysroot and the symbol is declared from API 21, so it costs
+  nothing. `x86_64-mingw` and `clang-native` are not Android and have no
+  liblog.
 - cmake toolchain + meson crossfile go next to `generic.lua`, referenced
   as `$SYSDIR/<file>` (never generated heredocs in the script).
 - Cross systems add `-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY` and
