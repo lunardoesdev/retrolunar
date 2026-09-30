@@ -63,10 +63,10 @@ Expected under `$NESTDIR/<sys>/`, byte-identical on every system:
 | --- | --- |
 | `include/stb_image.h` | `[ -f include/stb_image.h ]` |
 | `include/stb_truetype.h`, `include/stb_image_write.h`, `include/stb_image_resize2.h` | `[ -f include/stb_truetype.h ] && [ -f include/stb_image_write.h ] && [ -f include/stb_image_resize2.h ]` — the third name is the one the stale upstream README gets wrong |
-| the other 16 `stb*.h` headers | `[ "$(ls include/stb*.h \| wc -l)" -eq 19 ]` |
+| the other 17 `stb*.h` headers | `[ "$(ls include/stb*.h \| wc -l)" -eq 20 ]` — 20, not 19: upstream ships 20 `stb*.h` at commit 2c980bb, and `stage1.md` already says so. `-eq 19` fails against a correct build |
 | `include/stb_vorbis.c` | `[ -f include/stb_vorbis.c ]` |
 | `include/LICENSE` | `[ -f include/LICENSE ]` |
-| header count / no strays | `[ "$(ls include/ \| wc -l)" -eq 21 ]` — 19 headers + `stb_vorbis.c` + `LICENSE`, nothing else |
+| header count / no strays | `[ "$(ls include/ \| wc -l)" -eq 22 ]` — 20 headers + `stb_vorbis.c` + `LICENSE`, nothing else. Only meaningful on a clean prefix: in a shared one `include/` also holds every other package's headers |
 
 **There is no library file, no `bin/`, no pkg-config file and no CMake package
 config — all four are correct.** stb is consumed by `#define

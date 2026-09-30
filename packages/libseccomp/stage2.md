@@ -144,7 +144,7 @@ The reasoning is the correct one (missing kernel ABI, not a fixable flag).
 | `$PREFIX/lib/libseccomp.a` | `llvm-nm --defined-only $PREFIX/lib/libseccomp.a` shows `T seccomp_init` |
 | `$PREFIX/include/seccomp.h`, `$PREFIX/include/seccomp-syscalls.h` | `test -f` both (`include/Makefile.am:19`) |
 | `$PREFIX/lib/pkgconfig/libseccomp.pc` | `pkg-config --modversion libseccomp` → `2.6.1` |
-| `$PREFIX/share/man/man3/*.3` (35 pages) + `man1/scmp_sys_resolver.1` | `ls $PREFIX/share/man/man3 \| wc -l` → `35` |
+| `$PREFIX/share/man/man3/*.3` (35 pages) + `man1/scmp_sys_resolver.1` | `ls $PREFIX/share/man/man3 \| grep -c '^seccomp_'` → `35`. **The `grep` is required, not decoration.** `share/man` is a *shared* prefix directory: `man-pages`, `systemd-man-pages`, `tcl` and libseccomp all install into it, so a bare `wc -l` on `man3` counts every package's pages, not this one's (it reports ~3,300). This is the same root cause as the `rm -rf share/man` mishap recorded in `packages/oniguruma/stage3.md`: a shared directory with no per-package namespacing invites both a wrong count and a destructive cleanup. |
 | `$PREFIX/bin/scmp_sys_resolver` **only if you keep line 16 as-is** | `test -x`. Required change 1 removes it; do not treat its absence as a failure after that change. |
 
 ## Where the builder is most likely to be wrong

@@ -434,7 +434,7 @@ Artifacts, against the `stage2.md` "Carried to the build" table:
 
 | expected | result |
 | --- | --- |
-| six `libnl-*-3.a` | `ls lib/libnl*.a \| wc -l` → **6** (`libnl-3.a` 252744, `libnl-genl-3.a` 31470, `libnl-idiag-3.a` 51730, `libnl-nf-3.a` 165992, `libnl-route-3.a` 1349592, `libnl-xfrm-3.a` 122298) |
+| six `libnl*.a` (note: `libnl-3.a` itself, plus the five `libnl-<module>-3.a`) | `ls lib/libnl*.a \| wc -l` → **6** (`libnl-3.a` 252744, `libnl-genl-3.a` 31470, `libnl-idiag-3.a` 51730, `libnl-nf-3.a` 165992, `libnl-route-3.a` 1349592, `libnl-xfrm-3.a` 122298) |
 | aarch64 | `llvm-objdump -f` → `file format elf64-littleaarch64` on all six |
 | `T nl_socket_alloc` in `libnl-3.a` | `llvm-nm --defined-only` → `0000000000000360 T nl_socket_alloc` (also `T nl_connect`, `T nl_recvmsgs`) |
 | nothing links `-ldl` | `llvm-nm --undefined-only \| grep -c dlopen` → **0** on all six |
