@@ -159,7 +159,7 @@ as "roughly how often a developer reaches for it".
 - [ ] protobuf
 - [ ] protobuf-c (blocked on its dependency: 1.5.1's configure requires Google protobuf >= 3.0.0, i.e. the libprotobuf C++ runtime. Google protobuf itself needs abseil, so this is a chain: abseil-cpp, then protobuf, then protobuf-c)
 - [ ] nanopb
-- [ ] c-ares
+- [x] c-ares 1.34.8 (static libcares.a; pkg-config --modversion libcares reports 1.34.8; archive members are elf64-littleaarch64. Tools and tests off)
 - [x] libevent 2.1.12-stable (static libevent, libevent_core, libevent_extra and libevent_openssl against the OpenSSL in this prefix; pkg-config --modversion libevent reports 2.1.12-stable; archive members are elf64-littleaarch64)
 - [x] libuv 1.51.0 (static libuv.a, uv.h and uv/, CMake package config; archive members are elf64-littleaarch64. Note: 1.51.0 installs no pkg-config file, so link -luv or use find_package(libuv))
 - [ ] nghttp2
