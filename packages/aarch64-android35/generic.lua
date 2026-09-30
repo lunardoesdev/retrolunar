@@ -111,6 +111,10 @@ return system({
         # cross target binary cannot run here, and running one would be
         # emulation, which we never do: link a static library instead.
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+        # cmake 4.x refuses any project whose minimum policy is below 3.5,
+        # and most of these projects are older than cmake itself. Give them
+        # a floor instead of editing their CMakeLists.txt.
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
         # cmake runs the make program it finds, and it would find ours:
         # $PREFIX/bin/make is an Android binary, so running it would need an
         # emulator. Pin the host make.
