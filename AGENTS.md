@@ -206,10 +206,10 @@ Rules:
 - Build-system flags come from the system, never hardcoded:
   `$CMAKE_FLAGS`, `$AUTOCONF_CONFIGURE_FLAGS`, `$MESON_FLAGS`. Hand-written
   (FFmpeg-family) `configure` scripts are not autoconf and reject
-  `--host`/`--build`, so their target identity comes from the system as
-  `$TARGET_TRIPLET` (empty on native, where the host is detected) and the
-  recipe spells it in that build system's own option. Nothing autoconf-
-  incompatible ever goes into `$AUTOCONF_CONFIGURE_FLAGS`.
+  `--host`/`--build`, so they read the machine facts (`$HOST_ARCH`,
+  `$HOST_OS`) and spell them their own way, e.g. libvpx's `--target=` and
+  ffmpeg's `--arch=`. Nothing autoconf-incompatible ever goes into
+  `$AUTOCONF_CONFIGURE_FLAGS`.
   Search flags (`CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG_*`) also come from the
   system — never `export` them in a recipe. Exception: recipe-local
   workarounds with a comment explaining why (e.g. readline needs
@@ -267,16 +267,17 @@ AUTOCONF_CONFIGURE_FLAGS="--host=aarch64-linux-android --build=x86_64-pc-linux-g
 
 Rules:
 
+- Every system exports the three machine identities in autotools' terms and
+  in that order: `BUILD_TRIPLET` (the machine that runs the build),
+  `HOST_TRIPLET` (the machine the artifacts run on; autoconf's `--host`) and
+  `TARGET_TRIPLET` (the machine a compiler would target; equal to host
+  here, because nothing here builds a compiler for a further machine), plus
+  `HOST_ARCH` and `HOST_OS`, the two halves of the host triplet. Never call
+  the host machine "target": in a cross build *this* system is the host.
 - Every cross system sets `AUTOCONF_CONFIGURE_FLAGS` with **both**
-  `--host=<triplet>` and `--build=x86_64-pc-linux-gnu` (python's configure
+  `--host=$HOST_TRIPLET` and `--build=$BUILD_TRIPLET` (python's configure
   errors out without an explicit `--build`; others guess fine but
   uniformity wins).
-- Every system exports `TARGET_TRIPLET`, the target identity for hand-written
-  (FFmpeg-family) `configure` scripts, which have no `--host`/`--build`: a
-  libvpx-style tuple such as `arm64-android-gcc` (note libvpx's `arm64`, not
-  autoconf's `aarch64`), and empty on native where the host is detected.
-  Recipes pass it in their own build system's option (`--target=$TARGET_TRIPLET`).
-  Never fold these into `$AUTOCONF_CONFIGURE_FLAGS`; autoconf rejects them.
 - `--prefix=$OUT` / `-DCMAKE_INSTALL_PREFIX=$OUT` (install target),
   search flags point at `$PREFIX` (where deps landed).
 - Keep values short: build long ones by appending
@@ -293,7 +294,10 @@ Rules:
   `bin/make` is a target binary that would need an emulator too.
 - A meson crossfile names no cross tools: meson takes them from the
   environment, so the system must export `$CC`, `$CXX`, `$AR`, `$STRIP`
-  and `$LD` as full paths. Only host programs (pkg-config) are listed.
+  and `$LD` as full paths. Only host programs (pkg-config) are listed. The
+  rest of the file is `[host_machine]` in *meson's* names, which need not
+  match `$HOST_ARCH`/`$HOST_OS` (meson says `arm` and `x86` where the
+  systems say `armv7a` and `i686`).
 - A non-native system NEVER prepends its toolchain to `PATH`. The cross
   tools are named explicitly (`$CC`, `$CXX`, `$AR`, `$STRIP`, ...), and a
   cross bin dir at the front of `PATH` makes host tools (cmake, make, and

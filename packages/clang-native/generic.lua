@@ -36,17 +36,21 @@ return system({
         PKG_CONFIG_PATH=""
         export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 
+        # --- machine identities: build, host, target ---
+        # A native build runs on the same machine it targets, so build, host
+        # and target are one triplet. FFmpeg-family configure scripts are not
+        # autoconf and reject --host/--build, so they read $HOST_ARCH/
+        # $HOST_OS and spell them their own way.
+        BUILD_TRIPLET="x86_64-pc-linux-gnu"
+        HOST_TRIPLET="$BUILD_TRIPLET"
+        TARGET_TRIPLET="$HOST_TRIPLET"
+        HOST_ARCH="x86_64"
+        HOST_OS="linux"
+        export BUILD_TRIPLET HOST_TRIPLET TARGET_TRIPLET HOST_ARCH HOST_OS
+
         # --- build-system defaults: install into $OUT ---
-        AUTOCONF_CONFIGURE_FLAGS="--build=x86_64-pc-linux-gnu --prefix=$OUT"
+        AUTOCONF_CONFIGURE_FLAGS="--build=$BUILD_TRIPLET --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
-        # --- target facts for builds that cannot detect their target ---
-        # Native: hand-written configure (libvpx) detects the host itself, so
-        # the tuple is empty. Defined anyway, like TARGET_ARCH/TARGET_OS, so
-        # every system exports the same variables.
-        TARGET_TRIPLET=""
-        TARGET_ARCH="x86_64"
-        TARGET_OS="linux"
-        export TARGET_TRIPLET TARGET_ARCH TARGET_OS
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"

@@ -37,18 +37,23 @@ return system({
         PKG_CONFIG_PATH=""
         export PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
 
+        # --- machine identities: build, host, target ---
+        # build = the machine that runs the build; host = the machine the
+        # artifacts run on (autoconf's --host). FFmpeg-family configure
+        # scripts are not autoconf and reject --host/--build, so they read
+        # $HOST_ARCH/$HOST_OS and spell them their own way. Nothing here
+        # builds a compiler for a further machine: target == host.
+        BUILD_TRIPLET="x86_64-pc-linux-gnu"
+        HOST_TRIPLET="x86_64-w64-mingw32"
+        TARGET_TRIPLET="$HOST_TRIPLET"
+        HOST_ARCH="x86_64"
+        HOST_OS="mingw32"
+        export BUILD_TRIPLET HOST_TRIPLET TARGET_TRIPLET HOST_ARCH HOST_OS
+
         # --- build-system defaults: install into $OUT, find in $PREFIX ---
-        AUTOCONF_CONFIGURE_FLAGS="--host=x86_64-w64-mingw32 --build=x86_64-pc-linux-gnu"
+        AUTOCONF_CONFIGURE_FLAGS="--host=$HOST_TRIPLET --build=$BUILD_TRIPLET"
         AUTOCONF_CONFIGURE_FLAGS="$AUTOCONF_CONFIGURE_FLAGS --prefix=$OUT"
         export AUTOCONF_CONFIGURE_FLAGS
-        # --- target facts for builds that cannot detect their target ---
-        # FFmpeg-style configure scripts (libvpx, ffmpeg) are not autoconf
-        # and reject --host/--build, and each spells the target its own way:
-        # libvpx takes --target=$TARGET_TRIPLET, ffmpeg --arch/--target-os.
-        TARGET_TRIPLET="x86_64-w64-mingw32"
-        TARGET_ARCH="x86_64"
-        TARGET_OS="mingw32"
-        export TARGET_TRIPLET TARGET_ARCH TARGET_OS
         CMAKE_TOOLCHAIN_FILE="$SYSDIR/x86_64-w64-mingw32-toolchain.cmake"
         CMAKE_PREFIX_PATH="$PREFIX"
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
