@@ -112,6 +112,11 @@ return system({
         # cross target binary cannot run here, and running one would be
         # emulation, which we never do: link a static library instead.
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY"
+        # Bionic keeps pthreads in libc, which FindThreads cannot detect on
+        # a cross build: its libc probe fails and it then settles on a
+        # "pthreads" library that no Android sysroot has. Prefer the plain
+        # -pthread flag, which is what this platform actually wants.
+        CMAKE_FLAGS="$CMAKE_FLAGS -DTHREADS_PREFER_PTHREAD_FLAG=ON"
         # cmake 4.x refuses any project whose minimum policy is below 3.5,
         # and most of these projects are older than cmake itself. Give them
         # a floor instead of editing their CMakeLists.txt.
