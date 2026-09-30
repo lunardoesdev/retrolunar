@@ -339,6 +339,13 @@ ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
 - When asked to add package(s), implement them and run their build on one
   suitable provided system. Preserve `./nest` and reuse its successful
   outputs; do not delete it or force dependency rebuilds unless necessary.
+- Several package additions may run at once against one `./nest`. The
+  nest's own lock is fail-fast, so a second build would abort rather than
+  queue: wrap the whole generate-and-run sequence in one shared mutex,
+  `flock ~/ond/git/rl-build.lock sh -c '...'`, which keeps builds serial as
+  the rules below require while letting the work parallelise. Agents editing
+  packages need separate jj working copies (`jj workspace add`) as siblings
+  of this repo, so their commits never race.
 - When asked to update package(s), update exactly the requested scope. Check
   each package's latest stable upstream release, then update its version,
   source URL or git tag, and any build recipe details that changed. Preserve
