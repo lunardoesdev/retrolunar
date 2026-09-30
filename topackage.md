@@ -152,7 +152,7 @@ as "roughly how often a developer reaches for it".
 - [x] toml11 4.4.0 (header-only: include/toml11/ headers, include/toml.hpp and a CMake package config. Nothing compiled, so it is identical on every system)
 - [ ] libconfig
 - [ ] libcbor
-- [ ] msgpack-c
+- [x] msgpack-c 7.0.2 (static libmsgpack-c.a, msgpack.h and msgpack/ headers; pkg-config --modversion msgpack-c reports 7.0.2; archive members are elf64-littleaarch64. Consumed by msgpack 5.x, which builds against it)
 - [ ] Cap'n
 - [ ] Proto
 - [x] FlatBuffers 25.2.10 (static libflatbuffers.a plus the flatc schema compiler and its code generators; pkg-config --modversion flatbuffers reports 25.2.10; archive members are elf64-littleaarch64. Note: flatc is built for the target and never run here; generate code with a host flatc)
