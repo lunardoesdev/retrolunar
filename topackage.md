@@ -88,3 +88,342 @@ Packages already in this repository remain on this list as candidates for versio
 - [x] Xz Utils 5.8.1 (matches LFS pin. bin/xz is "ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c" and lib/liblzma.so is "ELF 64-bit LSB shared object, ARM aarch64, for Android 24, built by NDK r28c"; pkg-config --modversion liblzma reports 5.8.1. NLS and the unxz/lzmadec/lzmainfo helpers and scripts are off)
 - [x] Zlib 1.3.1
 - [x] Zstd 1.5.7 (matches LFS pin. bin/zstd is "ELF 64-bit LSB pie executable, ARM aarch64, for Android 24, built by NDK r28c"; lib/libzstd.a members are elf64-littleaarch64; pkg-config --modversion libzstd reports 1.5.7, which also unblocks Kmod's zstd compression backend)
+
+
+# Popular C/C++ development packages (candidates)
+
+Three curated lists of C/C++ developer-facing packages, one per platform, to
+work through after the LFS list above. An entry is a candidate, not a promise:
+it gets a version pin, a `source.lua` and a `generic.lua` when it is picked
+up, and it only becomes `- [x]` after that build succeeds on a system here.
+
+Selection rules, applied to all three lists:
+
+- C or C++ only, and developer-facing: build and packaging tools, test and
+  analysis tools, and the compression, protocol, text, graphics, audio and
+  numeric libraries that C/C++ programs are written against. No end-user
+  applications, no language runtimes, and nothing already in `packages/`.
+- Must build **serially** (`make -j1`, `cmake --build build --parallel 1`,
+  `ninja -C build`), which is what retrolunar does everywhere, so peak memory
+  stays under **2 GB**. Compiler runtimes, whole desktop stacks and anything
+  that only builds in parallel are left out.
+- Recipes must take their flags from the system (`$AUTOCONF_CONFIGURE_FLAGS`,
+  `$CMAKE_FLAGS`, `$MESON_FLAGS`, `$CC`, `$CFLAGS`, `$PKG_CONFIG_LIBDIR`, ...)
+  and may not hardcode target facts: those come from `$HOST_TRIPLET`,
+  `$HOST_ARCH` and `$HOST_OS`.
+- No version here on purpose: the pin is checked against upstream at fetch
+  time, so a guess in this file would only be stale text.
+
+Popularity ordering is from knowledge of the C/C++ ecosystem, not a fresh
+crawl: web search was unavailable while these were written. Treat the order
+as "roughly how often a developer reaches for it".
+
+## Android candidates (100)
+
+- [ ] Brotli
+- [ ] Snappy
+- [ ] Zopfli
+- [ ] ISA-L
+- [ ] xxHash
+- [ ] Zlib-ng
+- [ ] Minizip
+- [ ] minizip-ng
+- [ ] zziplib
+- [ ] libarchive
+- [ ] lzop
+- [ ] lrzip
+- [ ] p7zip
+- [ ] giflib
+- [ ] jasper
+- [ ] lcms2
+- [ ] draco
+- [ ] meshoptimizer
+- [ ] cJSON
+- [ ] Jansson
+- [ ] json-c
+- [ ] nlohmann-json
+- [ ] RapidJSON
+- [ ] SimdJSON
+- [ ] YAML-CPP
+- [ ] libyaml
+- [ ] TinyXML2
+- [ ] Pugixml
+- [ ] tomlplusplus
+- [ ] toml11
+- [ ] libconfig
+- [ ] libcbor
+- [ ] msgpack-c
+- [ ] Cap'n
+- [ ] Proto
+- [ ] FlatBuffers
+- [ ] protobuf
+- [ ] protobuf-c
+- [ ] nanopb
+- [ ] c-ares
+- [ ] libevent
+- [ ] libuv
+- [ ] nghttp2
+- [ ] libssh2
+- [ ] libgit2
+- [ ] mbedTLS
+- [ ] wolfSSL
+- [ ] libsodium
+- [ ] Botan
+- [ ] nettle
+- [ ] libgcrypt
+- [ ] pcre2
+- [ ] Oniguruma
+- [ ] libcap
+- [ ] libseccomp
+- [ ] libnl-3
+- [ ] hwloc
+- [ ] libnuma
+- [ ] libunwind
+- [ ] utf8proc
+- [ ] ICU4C
+- [ ] libxml2
+- [ ] libxslt
+- [ ] graphite2
+- [ ] FriBidi
+- [ ] harfbuzz
+- [ ] fontconfig
+- [ ] cairo
+- [ ] pixman
+- [ ] pango
+- [ ] GLFW
+- [ ] GLEW
+- [ ] GLAD
+- [ ] GLM
+- [ ] ImGui
+- [ ] stb
+- [ ] tinyexr
+- [ ] OpenAL-Soft
+- [ ] miniaudio
+- [ ] PortAudio
+- [ ] libsndfile
+- [ ] libvorbis
+- [ ] libogg
+- [ ] FLAC
+- [ ] opusfile
+- [ ] mpg123
+- [ ] soxr
+- [ ] SpeexDSP
+- [ ] libmysofa
+- [ ] soundtouch
+- [ ] fmt
+- [ ] spdlog
+- [ ] plog
+- [ ] glog
+- [ ] Log4cxx
+- [ ] Catch2
+- [ ] doctest
+- [ ] GoogleTest
+- [ ] Google-Benchmark
+- [ ] Criterion3
+
+## Windows (mingw-w64) candidates (100)
+
+- [ ] Brotli
+- [ ] Zopfli
+- [ ] Snappy
+- [ ] ISA-L
+- [ ] xxHash
+- [ ] Zlib-ng
+- [ ] zziplib
+- [ ] 7-Zip
+- [ ] Minizip
+- [ ] minizip-ng
+- [ ] libarchive
+- [ ] lzop
+- [ ] lrzip
+- [ ] giflib
+- [ ] jasper
+- [ ] openjpeg
+- [ ] lcms2
+- [ ] draco
+- [ ] meshoptimizer
+- [ ] PhysFS
+- [ ] utf8proc
+- [ ] ICU4C
+- [ ] libxml2
+- [ ] libxslt
+- [ ] libyaml
+- [ ] cmark
+- [ ] Gumbo
+- [ ] Lexbor
+- [ ] graphite2
+- [ ] FriBidi
+- [ ] harfbuzz
+- [ ] fontconfig
+- [ ] cJSON
+- [ ] Jansson
+- [ ] json-c
+- [ ] nlohmann-json
+- [ ] RapidJSON
+- [ ] SimdJSON
+- [ ] YAML-CPP
+- [ ] TinyXML2
+- [ ] Pugixml
+- [ ] tomlplusplus
+- [ ] toml11
+- [ ] libconfig
+- [ ] fmt
+- [ ] spdlog
+- [ ] plog
+- [ ] easylogging-plusplus
+- [ ] glog
+- [ ] Log4cxx
+- [ ] range-v3
+- [ ] tl-expected
+- [ ] oneTBB
+- [ ] oneDPL
+- [ ] Eigen
+- [ ] xtensor
+- [ ] Highway
+- [ ] Boost
+- [ ] CGAL
+- [ ] SuiteSparse
+- [ ] FFTW
+- [ ] OpenBLAS
+- [ ] LAPACK
+- [ ] KissFFT
+- [ ] pcre2
+- [ ] Oniguruma
+- [ ] c-ares
+- [ ] libevent
+- [ ] libuv
+- [ ] nghttp2
+- [ ] libssh2
+- [ ] libgit2
+- [ ] mbedTLS
+- [ ] wolfSSL
+- [ ] libsodium
+- [ ] Botan
+- [ ] nettle
+- [ ] libgcrypt
+- [ ] cjose
+- [ ] asn1c
+- [ ] git
+- [ ] GLFW
+- [ ] GLEW
+- [ ] GLAD
+- [ ] GLM
+- [ ] ImGui
+- [ ] Vulkan-Headers
+- [ ] tinyexr
+- [ ] OpenAL-Soft
+- [ ] miniaudio
+- [ ] PortAudio
+- [ ] libsndfile
+- [ ] libvorbis
+- [ ] libogg
+- [ ] FLAC
+- [ ] opusfile
+- [ ] mpg123
+- [ ] soxr
+- [ ] SpeexDSP
+- [ ] libmysofa
+
+## Linux candidates (100)
+
+- [ ] ccache
+- [ ] distcc
+- [ ] samu
+- [ ] samurai
+- [ ] re2c
+- [ ] ragel
+- [ ] cmph
+- [ ] bear
+- [ ] mold
+- [ ] Universal-Ctags
+- [ ] exuberant-ctags
+- [ ] cscope
+- [ ] astyle
+- [ ] uncrustify
+- [ ] cppcheck
+- [ ] SWIG
+- [ ] doxygen
+- [ ] brotli
+- [ ] Zopfli
+- [ ] Snappy
+- [ ] ISA-L
+- [ ] xxHash
+- [ ] Zlib-ng
+- [ ] libarchive
+- [ ] p7zip
+- [ ] lzop
+- [ ] lrzip
+- [ ] minizip-ng
+- [ ] zziplib
+- [ ] squashfs-tools
+- [ ] cpio
+- [ ] pax
+- [ ] dosfstools
+- [ ] mtools
+- [ ] lldb
+- [ ] gdb
+- [ ] valgrind
+- [ ] strace
+- [ ] ltrace
+- [ ] heaptrack
+- [ ] fmt
+- [ ] spdlog
+- [ ] plog
+- [ ] easylogging-plusplus
+- [ ] glog
+- [ ] Log4cxx
+- [ ] range-v3
+- [ ] tl-expected
+- [ ] oneTBB
+- [ ] oneDPL
+- [ ] Eigen
+- [ ] xtensor
+- [ ] Highway
+- [ ] Boost
+- [ ] CGAL
+- [ ] SuiteSparse
+- [ ] FFTW
+- [ ] OpenBLAS
+- [ ] LAPACK
+- [ ] Armadillo
+- [ ] nlohmann-json
+- [ ] RapidJSON
+- [ ] SimdJSON
+- [ ] cJSON
+- [ ] Jansson
+- [ ] json-c
+- [ ] yajl
+- [ ] YAML-CPP
+- [ ] libyaml
+- [ ] TinyXML2
+- [ ] Pugixml
+- [ ] tomlplusplus
+- [ ] toml11
+- [ ] libconfig
+- [ ] libcbor
+- [ ] msgpack-c
+- [ ] Cap'n-Proto
+- [ ] FlatBuffers
+- [ ] protobuf
+- [ ] protobuf-c
+- [ ] nanopb
+- [ ] c-ares
+- [ ] libevent
+- [ ] libuv
+- [ ] nghttp2
+- [ ] libssh2
+- [ ] libgit2
+- [ ] mbedTLS
+- [ ] wolfSSL
+- [ ] libsodium
+- [ ] Botan
+- [ ] nettle
+- [ ] libgcrypt
+- [ ] pcre2
+- [ ] Oniguruma
+- [ ] libcap
+- [ ] libseccomp
+- [ ] libnl-3
+- [ ] hwloc
+- [ ] libnuma
+
