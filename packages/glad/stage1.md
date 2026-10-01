@@ -118,41 +118,88 @@ not provide anyway (`--without-ensurepip`).
 ## The generation command
 
 ```
-python3 -m glad --out-path=glad-out --reproducible --api=gl:core=3.3,gles2 --loader c
+python3 -m glad --out-path=glad-out --reproducible --api=gl:core=3.3,gles2,egl c --loader
 ```
+
+**The position of `c` is load-bearing.** The global options (`--out-path`,
+`--api`, `--reproducible`) are registered on the top-level parser
+(`glad/__main__.py:122`), but the generator's own options — `--loader` among
+them — are registered on the **`c` subparser** (`glad/__main__.py:134-135`,
+via `glad/config.py:288-296`, which builds each flag as
+`'--' + name.lower().replace('_','-')`). `argparse` matches the subcommand
+token before the subparser takes over, so `c` must precede `--loader`.
+Writing `... --api=... --loader c` aborts with
+`error: unrecognized arguments: --loader` before any file is produced. The
+first version of this forecast got that wrong.
+
+**`egl` is in the API list because `--loader` requires it.** This was the
+second, independent failure in the first version of this recipe. The built-in
+loader pulls in `loader/<api>.c` for every selected API
+(`glad/generator/c/templates/base_template.c:185-191`), and
+`loader/gles2.c:17` does an unconditional `#include <glad/egl.h>` to obtain
+`EGLDisplay` and `PFNEGLGETPROCADDRESSPROC`. `glad/egl.h` is only generated
+when `egl` is among the requested APIs, so `--api=gl:core=3.3,gles2` yields a
+`src/gles2.c` that cannot compile — `fatal error: 'glad/egl.h' file not
+found`. Requesting `egl` makes glad generate `include/glad/egl.h` and
+`src/egl.c` from its own vendored `glad/files/egl.xml`, so nothing outside this
+tree is needed for it. This is also what upstream's own generator does when
+asked for GLES2.
+
+The alternative — compiling `gles2.c` with `-DGLAD_GLES2_USE_SYSTEM_EGL` — is
+**not usable here and I recommend against it**, for two reasons. First, that
+arm is `#include <EGL/egl.h>` (`loader/gles2.c:13-14`) and
+`__eglMustCastToProperFunctionPointerType` is declared *by that header*. The
+NDK sysroot does ship `EGL/egl.h`, which is why it looks like it works, but
+the mingw sysroot has no `EGL/` directory at all (verified:
+`/usr/x86_64-w64-mingw32/include/EGL/` does not exist) — so it is an
+Android-only fact and would break `x86_64-mingw`. Second, it is a compile
+definition every consumer would have to replicate.
 
 | Flag | Reason |
 | --- | --- |
 | `--reproducible` | Offline + deterministic. See above. Without it this build attempts network access at build time. |
-| `--api=gl:core=3.3,gles2` | Desktop GL core for `x86_64-mingw` and `clang-native`, GLES2 for Android. Both pinned explicitly: "no version" means *latest* (`glad/__main__.py:88-96`). Neither profile is optional — `gl:core` needs its profile, `gles2` has none available (`glad/parse.py:668-682`). |
-| `--loader` | Emits glad's own `dlopen`-based loader (`glad/generator/c/templates/loader/gl.c:36-52`). Without it the generated source declares the function-pointer table but leaves `gladLoadGLLoader()` for the consumer, and there is no other loader in this prefix. |
-| `c` (subcommand) | The C generator. `subparsers.default = 'c'` (`glad/__main__.py:82`) so it is optional; passed explicitly for readability. |
+| `--api=gl:core=3.3,gles2,egl` | Desktop GL core for `x86_64-mingw` and `clang-native`, GLES2 for Android, EGL because the loader's GLES2 path needs it. Both GL versions are pinned explicitly: "no version" means *latest* (`glad/__main__.py:88-96`). |
+| `--loader` | Emits glad's own `dlopen`-based loader (`templates/loader/*.c`). Without it the generated source declares the function-pointer table but leaves `gladLoadGLLoader()` for the consumer, and there is no other loader in this prefix. |
+| `c` (subcommand) | The C generator. `subparsers.default = 'c'` (`glad/__main__.py:128`) so it is optional; passed explicitly because its position is significant. |
 
-**Output layout** is fixed by the generator, not chosen by us:
-`glad/generator/c/__init__.py:397-399` writes
-`include/glad/<name>.h` and `src/<name>.c`, where `<name>` is the API string
-(`glad/parse.py:780`). So the run above produces:
+**Output layout** is fixed by the generator, not chosen by us.
+`glad/generator/c/__init__.py:397-399` writes `include/glad/<name>.h` and
+`src/<name>.c` per API, where `<name>` is the API string (`glad/parse.py:780`),
+so the run above produces:
 
 ```
 glad-out/include/glad/gl.h        glad-out/src/gl.c
 glad-out/include/glad/gles2.h     glad-out/src/gles2.c
+glad-out/include/glad/egl.h       glad-out/src/egl.c
+glad-out/include/KHR/khrplatform.h
+glad-out/include/EGL/eglplatform.h
 ```
 
-plus whatever Khronos headers the selected API pulls in
-(`glad/generator/c/__init__.py:_add_additional_headers` writes them under
-`include/<header.include>`, i.e. `include/KHR/khrplatform.h`). The recipe
-copies `glad-out/include/.` wholesale rather than naming files, precisely
-because that set is the generator's business, not ours.
+The last two are the Khronos platform headers the generated headers need
+(`EGLDisplay` comes from `eglplatform.h`, the `khronos_*` types from
+`khrplatform.h`); `glad/generator/c/__init__.py:_add_additional_headers`
+writes them from the vendored copies in `glad/files/`, so again nothing
+external is involved. The recipe copies `glad-out/include/.` wholesale rather
+than naming files, because that set is the generator's business, not ours.
 
 ## What it installs
 
-- `lib/libglad.a` — built from the two generated `.c` files with `$CC`/`$AR`.
-- `include/glad/gl.h`, `include/glad/gles2.h` (+ `include/KHR/khrplatform.h`
-  if the selected API pulls it in).
+- `lib/libglad.a` — built from the three generated `.c` files with
+  `$CC`/`$AR`.
+- `include/glad/{gl.h,gles2.h,egl.h}`, `include/KHR/khrplatform.h`,
+  `include/EGL/eglplatform.h`.
 - `lib/pkgconfig/glad.pc` — hand-written by the recipe. Upstream ships **no**
   `.pc` and no CMake package config anywhere: there is nothing in the tree to
   describe, because there is no build output in the tree. This follows
-  `packages/lua/generic.lua`.
+  `packages/lua/generic.lua`. Consumers need no compile definition.
+
+**One hazard worth naming.** The recipe installs glad's own
+`EGL/eglplatform.h` into the shared prefix. A consumer that also links a
+*system* EGL would have `$PREFIX/include` searched first (every system puts
+`-I$PREFIX/include` ahead of the sysroot), so our copy could shadow theirs.
+It is the genuine Khronos header, but it is a new `EGL/` directory appearing
+in a shared prefix, and that is the kind of thing a reviewer should be
+comfortable with.
 
 ## What does the generated C need from a host that does not exist here?
 
@@ -171,20 +218,55 @@ and the loader adds `<dlfcn.h>` on non-Windows
 21, while `GLAD_PLATFORM_WIN32` (`templates/platform.h:6-11`, keyed on
 `_WIN32`/`__MINGW32__`) makes mingw use `<windows.h>`/`LoadLibraryA` instead.
 
-**No OpenGL headers, no X11, no EGL headers, no GLX.** The generated header
-*is* the OpenGL header — the same property GLEW has, and for the same reason.
-`--dlfcn` resolution is a *runtime* concern anyway: the build is a static
-archive with no link step.
+**No OpenGL headers, no X11, no GLX — and no *system* EGL headers either.**
+The generated header *is* the OpenGL and EGL header; that is what asking for
+`egl` buys. `dlopen` resolution is a *runtime* concern in any case: the build
+is a static archive with no link step.
 
-## Dependencies summary
+## Dependencies summary — and the blocker
 
 | Requirement | In this tree? |
 | --- | --- |
-| `python@native` | `packages/python/` exists; **no stage3.md**, no build record. |
-| `jinja2@native` | `packages/jinja2/` exists, pure-Python copy. |
-| `markupsafe@native` | `packages/markupsafe/` exists, pure-Python copy (no `_speedups`). |
+| `python@native` | `packages/python/` **exists but is REJECTed at stage 2**, and `nest/clang-native/bin` contains no `python3` at all. |
+| `jinja2@native` | `packages/jinja2/` exists, pure-Python copy into `lib/python3.14/site-packages` — but **REJECTed at stage 2**. |
+| `markupsafe@native` | `packages/markupsafe/` exists, pure-Python copy, no `_speedups` — but **REJECTed at stage 2**. |
 | network at build time | Not needed, given `--reproducible`. |
 | `pip` / package install | Not needed — `glad/plugin.py` falls back to built-in defaults. |
+
+**This package cannot build today, and that is a determinate fact rather than
+an open question.** All three Python dependencies are reviewed and rejected:
+
+```
+$ head -1 packages/{python,jinja2,markupsafe}/stage2.md
+REJECT   REJECT   REJECT
+```
+
+and there is no `python3` in the native prefix at all:
+
+```
+$ ls nest/clang-native/bin | grep -i '^python'
+(nothing)
+```
+
+So the mechanism this recipe relies on — "the loader puts `$NATIVE_PREFIX/bin`
+first, so a bare `python3` is the native one" — currently resolves to whatever
+`/usr/bin/python3` happens to be on the build host, and *that* interpreter's
+`site-packages` is not `$NATIVE_PREFIX/lib/python3.14/site-packages` either. The
+recipe's comment about jinja2 and markupsafe landing "in the native
+interpreter's own site-packages" is therefore **not true of this nest** until
+`python@native` actually builds.
+
+One correction to the stage 2 review, for the record: it states that jinja2 and
+markupsafe install into `lib/python3.13/site-packages` while the interpreter is
+3.14. That is not what the recipes say — all three use
+`lib/python3.14/site-packages`, matching the pinned CPython 3.14.7. The only
+`python3.13` string in `packages/` is a comment in `wheel/generic.lua:12`.
+That mismatch is therefore **not** an additional blocker, and should not be
+carried forward as one. The blocker is the three rejections and the absent
+interpreter, nothing else.
+
+None of this is the adder's to fix, and it is not worked around here. Fix
+`python`, `jinja2` and `markupsafe`, then re-review glad.
 
 ## Source
 
@@ -202,26 +284,32 @@ API level is not a variable for this package on any row.
 
 ## Per-system verdict
 
-Every row below is **conditional on the same single fact**: that
-`packages/python` builds a working CPython for `clang-native`. That is stated
-once, above, and not repeated per row.
+Every row below is **WILL NOT BUILD for the same single, determinate reason**:
+the generator's host interpreter does not exist. `python`, `jinja2` and
+`markupsafe` are all REJECTed at stage 2 and `nest/clang-native/bin` has no
+`python3`, so `python3 -m glad` cannot run and no C is ever produced. That is
+stated once, in 'Dependencies summary — and the blocker', and not repeated per
+row.
 
 | Family | Verdict | Reason |
 | --- | --- | --- |
-| `aarch64-android21` | UNCERTAIN | The generated sources are unconditional and use nothing older than `<dlfcn.h>` (API 21), so the *compile* is safe at 21. But this row cannot be green until `python@native` is proven, and that build has no stage3.md in this tree. |
-| `aarch64-android24` | UNCERTAIN | As above. |
-| `aarch64-android35` | UNCERTAIN | As above. |
-| `x86_64-android35` | UNCERTAIN | As above; the generated C has no architecture branches — `dlopen` is the only platform call and it is chosen by preprocessor on `_WIN32`, not on architecture. |
-| `x86_64-mingw` | UNCERTAIN | As above, plus `GLAD_PLATFORM_WIN32` is 1 here (`__MINGW32__`), so the generated loader uses `<windows.h>`/`LoadLibraryA` and never reaches `<dlfcn.h>`. Same single caveat. |
-| `clang-native` | UNCERTAIN | As above. On this system the generator and the generated C share the same prefix, so this is the row most likely to work first — but "most likely" is not a verdict, and I have not run it. |
+| `aarch64-android21` | WILL NOT BUILD | The blocker: no host Python, so generation never starts. Note that the *compile* half would have been safe at 21 — the generated sources use nothing older than `<dlfcn.h>` — so this row is about the generator, not the API level. |
+| `aarch64-android24` | WILL NOT BUILD | Same blocker. |
+| `aarch64-android35` | WILL NOT BUILD | Same blocker. |
+| `x86_64-android35` | WILL NOT BUILD | Same blocker. |
+| `x86_64-mingw` | WILL NOT BUILD | Same blocker. Worth recording for the re-review: because `egl` is now in the API list, glad generates its own `glad/egl.h` from vendored `egl.xml`, so this row needs **no** system EGL header — which the `-DGLAD_GLES2_USE_SYSTEM_EGL` alternative would have required and the mingw sysroot does not have. |
+| `clang-native` | WILL NOT BUILD | Same blocker, and it is the sharpest form of it: on this system the generator's output *is* the system artifact, so with no `python3` in `nest/clang-native/bin` there is nothing at all. |
 
 `armv7a-android*` and `i686-android*` match `aarch64-android*` for every row.
 
-**These rows are UNCERTAIN rather than WILL BUILD on purpose.** Every other
-package in this wave can be judged from its own sources; this one cannot be,
-because half its build is a dependency that has never been built here. Marking
-it green would be exactly the "forecast that is wrong is worse than no
-forecast" failure AGENTS.md describes.
+**These rows changed from UNCERTAIN to WILL NOT BUILD, and the reason matters.**
+The first version of this forecast called them UNCERTAIN, which was right when
+the only problem was an unproven dependency — "I don't know whether this will
+build" is what UNCERTAIN means. It is the wrong answer once it is *known* that
+the build cannot start. The two defects in the first version of the recipe —
+the `--loader` position and the missing `glad/egl.h` — were internal to this
+package and are now fixed; what remains is a dependency blocker that is not the
+adder's to fix. Re-review once `python`, `jinja2` and `markupsafe` land.
 
 ## What a reviewer should scrutinise
 
@@ -242,6 +330,15 @@ forecast" failure AGENTS.md describes.
    would need to add it themselves; on Bionic and modern glibc it is in libc.
 5. **The generated header set is copied wholesale.** If a future glad release
    changes `get_templates()`, the recipe still works, because it copies
-   `include/.` and compiles the two `.c` files by the names the API strings
-   produce. If it ever emits a *different number* of source files, the recipe's
-   hardcoded `gl.c`/`gles2.c` would need updating.
+   `include/.` rather than naming files. If it ever emits a *different number*
+   of source files, the recipe's hardcoded `gl.c`/`gles2.c`/`egl.c` would need
+   updating.
+6. **`EGL/eglplatform.h` lands in the shared prefix.** A new `EGL/` directory,
+   from a package named glad. It is the genuine Khronos header and glad's
+   generated `egl.h` needs it, but `$PREFIX/include` is searched ahead of
+   every sysroot, so it could shadow a real system one for a consumer that
+   also uses EGL. Recorded rather than worked around.
+7. **The `--loader` argument position.** `--loader` *before* the `c`
+   subcommand aborts generation; after it, the spelling is right and
+   accepted. The spelling comes from `glad/config.py:291`
+   (`'--' + name.lower().replace('_','-')` applied to `CConfig.LOADER`).
