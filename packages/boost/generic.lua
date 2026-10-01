@@ -1,50 +1,56 @@
-require("boost@native")
+-- Why there is no boost@native requirement any more.
+--
+-- This file used to build Boost with b2 and needed the b2 engine, which is a
+-- PROGRAM that must run on this machine to drive the build (bootstrap.sh:229
+-- deliberately clears $CXX so the engine is built by the host compiler). That
+-- is why boost/clang-native.lua existed, and why the cross systems' exported
+-- WINDRES could reach a host build and link a PE resource object into it.
+--
+-- The build is cmake now, so there is no b2, no engine to cross-compile, and
+-- no host helper at all. boost/clang-native.lua is deleted; this file is the
+-- whole build, and it is the same for every system because cmake takes the
+-- toolchain from $CMAKE_FLAGS.
+--
+-- WHAT IS BUILT, and why these three libraries.
+--
+-- Boost 1.92 ships no top-level CMakeLists.txt, so packages/boost/
+-- CMakeLists.txt is ours: a project() call, the 38-library dependency
+-- closure, the unified-layout include fix, and the boost_install() call.
+-- Every archive, package config and version file is produced by upstream's
+-- own tools/cmake/include/BoostInstall.cmake. That file's header explains why
+-- the caller is needed at all, with the evidence.
+--
+-- The three compiled libraries are the ones i2pd asks for at
+-- build/CMakeLists.txt:289:
+--     find_package(Boost REQUIRED COMPONENTS filesystem program_options atomic)
+-- A headers-only Boost cannot satisfy that: boost_headers resolves and the
+-- component lookup then fails with "Could not find a package configuration
+-- file provided by boost_filesystem". container comes along because
+-- filesystem depends on it (libs/filesystem/CMakeLists.txt:228-244).
+--
+-- The headers still install, for header-only consumers such as CGAL, which
+-- needs boost/version.hpp and a package config and nothing else.
 require("boost@source")
 
 return recipe({
     build = [[
         cp -r $NESTDIR/source/boost/* .
 
-        # Boost 1.92.0 ships b2/jam, not cmake and not meson. There is no
-        # ./configure and no CMakeLists.txt at the top level.
-        #
-        # THE BUILD TOOL IS NATIVE, which is why this file requires
-        # boost@native rather than compiling b2 itself. The `b2` executable
-        # is not a library: it is the program that reads the Jamfiles and
-        # then RUNS on this machine to drive the build. bootstrap.sh:229
-        # builds it as
-        #     CXX= CXXFLAGS= "$my_dir/tools/build/src/engine/build.sh"
-        # i.e. upstream deliberately clears $CXX and $CXXFLAGS so the engine
-        # is built with the host compiler, not the target one. Building it
-        # from this recipe instead would hand us an aarch64-android or
-        # x86_64-w64-mingw32 b2 sitting in $PREFIX/bin that could never run
-        # here, and running it to find out would be emulation, which
-        # AGENTS.md forbids outright. boost/clang-native.lua therefore
-        # builds the engine once with clang-native's $CXX and installs it as
-        # $NATIVE_PREFIX/bin/b2, which the loader puts first on PATH
-        # (src/loader.lua:413), so the bare `b2` below is the host one.
-        #
-        # WHY HEADERS ONLY. topackage.md:106-108 requires a serial build
-        # with peak memory under 2 GB. A full Boost build compiles the
-        # ~50 libraries that have a build/Jamfile and is many hours of work;
-        # it is not what this package is for. The consumer that makes this
-        # package a hard gate is CGAL, which needs headers plus a package
-        # config and nothing else (see stage1.md). The upstream target for
-        # exactly that is libs/headers/build//install - libs/headers/
-        # README.md:3 says so in as many words: "This is a "fake" library
-        # that installs the Boost headers on `b2 libs/headers/build//install`".
-        # It is `b2 headers` at the top level that does NOT install anything:
-        # Jamroot:356 makes `headers` a notfile target whose action is
-        # @do-nothing (Jamroot:344), so it is a build-graph node and not an
-        # install step.
-        #
-        # NOTHING IS COMPILED for the libraries. libs/headers/build/Jamfile
-        # globs the header tree (path.glob-tree over $(BOOST_ROOT)/boost for
-        # *.hpp *.ipp *.h *.inc, plus boost/compatibility/cpp_c_headers/c*)
-        # and hands the files to b2's `install` rule; the cmake package files
-        # come from `make` rules whose generating-rule is text emission. No
-        # lib target is built, so no archive is produced and no ABI-level
-        # question arises. -d0 keeps the graph chatter out of the log.
-        b2 -d0 libs/headers/build//install --prefix="$OUT" --layout=system
+        # Our superproject is a file of OURS, not upstream's: it sits next to
+        # this recipe rather than in the tarball, so it has to be copied into
+        # the work directory. Same shape as the systems' cmake toolchain file
+        # and meson crossfile, which are referenced as $SYSDIR/<file> rather
+        # than generated as a heredoc.
+        cp $RECIPEDIR/CMakeLists.txt .
+
+        # $CMAKE_FLAGS carries the toolchain file, the install prefix and the
+        # prefix path, and the systems already put the compiler there too
+        # (packages/x86_64-mingw/x86_64-w64-mingw32-toolchain.cmake:10-16
+        # reads $CC/$CXX from the environment). So no target fact is named
+        # here: one recipe covers mingw, all four Android architectures and
+        # clang-native.
+        cmake -S . -B build $CMAKE_FLAGS
+        cmake --build build --parallel 1
+        cmake --install build
     ]]
 })
