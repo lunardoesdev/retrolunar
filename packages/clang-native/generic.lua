@@ -55,6 +55,18 @@ return system({
         CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-        export CMAKE_PREFIX_PATH CMAKE_FLAGS
+        # MESON_FLAGS was missing here entirely, which is a silent-failure
+        # defect rather than a cosmetic gap: meson with no --prefix records
+        # prefix=/usr/local, so a meson build compiles happily, "installs",
+        # writes nothing into $OUT, and reports no error. The package then
+        # appears to build and produces no artifact at all.
+        #
+        # --prefix only. Unlike the cross systems there is no cross-file to
+        # pass, because meson takes the native toolchain from the environment
+        # ($CC, $CXX, $AR and friends are all exported above), and no policy
+        # floor is needed because this is not cmake. Serial builds come from
+        # the recipes' own `meson compile --jobs 1`, not from here.
+        MESON_FLAGS="--prefix=$OUT"
+        export CMAKE_PREFIX_PATH CMAKE_FLAGS MESON_FLAGS
     ]],
 })
