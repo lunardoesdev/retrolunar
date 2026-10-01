@@ -209,6 +209,17 @@ Nothing is compiled, so no system differs on toolchain grounds. The one
 real variable is the **API level**, and for a headers-only install it is
 reached only at *consumer* compile time, not here.
 
+**Superseded in one place.** This table was written when `generic.lua` was the
+only install path, and it says so in its first line. `x86_64-mingw` no longer
+takes that path: `packages/boost/x86_64-mingw.lua` was added because
+`packages/i2pd/stage1.md` established that a headers-only Boost cannot satisfy
+`find_package(Boost REQUIRED COMPONENTS filesystem program_options atomic)`,
+and that package now builds and links on mingw. The five other rows are
+unchanged and still describe what those systems do. The mingw row below is
+kept as written, because its `--layout=system` reasoning still holds; the
+compiled subset it did not anticipate is documented in
+`packages/i2pd/stage2.md` and `stage3.md`, where the build evidence is.
+
 | System family | Verdict | Basis |
 |---|---|---|
 | aarch64-android21 | WILL BUILD | No library is compiled. `libs/headers/build/Jamfile` is `path.glob-tree` + `install` + `make` (text emission) — no `lib` rule is reached. The b2 engine is a **host** binary (`bootstrap.sh:229` clears `$CXX`; the loader runs `$NATIVE_PREFIX/bin/b2`), so no target libc is touched. The API-21 gaps AGENTS.md lists (`stderr` as a real symbol, `POSIX_MADV_*`, `process_vm_readv`, `posix_spawn`, `mblen`/`getpass`, `O_BINARY`) cannot bite a build that links nothing. |

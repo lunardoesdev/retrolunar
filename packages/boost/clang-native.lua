@@ -41,7 +41,27 @@ return recipe({
         # which is what makes the resulting b2 a host binary. -d0 silences
         # b2's own progress output. The build is a single compiler
         # invocation, so it cannot fan out.
-        CXX="$CXX" CXXFLAGS="$CXXFLAGS" tools/build/src/engine/build.sh --cxxflags="-O2 -DNDEBUG"
+        # WINDRES must NOT be in this command's environment. The engine
+        # build.sh:502-511 asks $CXX -dumpmachine, and the answer decides
+        # whether it embeds a Windows manifest by running windres on
+        # res.rc and linking the result. It finds $WINDRES FROM THE
+        # ENVIRONMENT -- there is no --windres flag -- and the cross
+        # systems export one (x86_64-mingw/generic.lua:19 exports
+        # WINDRES=x86_64-w64-mingw32-windres). When this block runs inside a
+        # build script that has already exported that, the HOST engine gets
+        # a TARGET resource object linked into it and dies with
+        #     res.o:(.rsrc+0x48): dangerous relocation:
+        #         R_AMD64_IMAGEBASE with __ImageBase undefined
+        # because a PE resource section cannot go into an ELF executable.
+        #
+        # The probe keys on $CXX -dumpmachine, which here answers
+        # x86_64_64-pc-linux-gnu, so an empty WINDRES is enough to make the
+        # branch not fire at all -- and the extra belt, which is what
+        # upstream itself honours, is B2_DONT_EMBED_MANIFEST. Clearing
+        # both means the outcome no longer depends on what the surrounding
+        # build script happened to export.
+        WINDRES= B2_DONT_EMBED_MANIFEST=1 \
+            CXX="$CXX" CXXFLAGS="$CXXFLAGS" tools/build/src/engine/build.sh --cxxflags="-O2 -DNDEBUG"
         mkdir -p $OUT/bin
         cp tools/build/src/engine/b2 $OUT/bin/b2
     ]]
