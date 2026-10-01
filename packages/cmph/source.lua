@@ -3,7 +3,7 @@ return recipe({
     build = [[
         mkdir -p dl
         if [ ! -f dl/cmph.tar.gz ]; then
-          curl -fSL -C - -o dl/cmph.tar.gz "http://deb.debian.org/debian/pool/main/c/cmph/cmph_2.0.2.orig.tar.gz"
+          curl -fSL -C - -o dl/cmph.tar.gz "https://github.com/bonitao/cmph/releases/download/v2.0.2/cmph-2.0.2.tar.gz"
         fi
         rm -rf src
         mkdir -p src
