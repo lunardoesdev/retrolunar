@@ -6,10 +6,12 @@
 -- conceptually with the archive format rather than the program. "sevenzip" is
 -- the plainest lowercase spelling that names the project unambiguously.
 --
--- The release asset `7z2603-src.tar.xz` unpacks with the tarball root being the
--- *contents* of upstream's `CPP/` directory (its 1092 `CPP/...` members are
--- flattened to the root). So --strip-components=1 is correct and lands C/,
--- CPP-subdirs such as 7zip/, Common/, Windows/ and the *.mak files side by side.
+-- Layout: 7z2603-src.tar.xz has NO top-level wrapper directory. Its 1292 members
+-- sit directly under four top-level names -- Asm/, C/, CPP/ and DOC/ (1092 of
+-- them under CPP/). So --strip-components must NOT be used: stripping one
+-- component would remove CPP/, C/, Asm/ and DOC/ themselves and flatten the
+-- C++ sources up one level, which is exactly what the makefiles' `../../../..`
+-- source references do not expect.
 return recipe({
     version = "26.03",
     build = [[
@@ -19,7 +21,9 @@ return recipe({
         fi
         rm -rf src
         mkdir -p src
-        tar -xJf dl/7z2603-src.tar.xz -C src --strip-components=1
+        # No --strip-components: the tarball has no top-level wrapper dir, and
+        # stripping one would delete CPP/ and C/ themselves.
+        tar -xJf dl/7z2603-src.tar.xz -C src
         mkdir -p $OUT/sevenzip
         cp -r src/* $OUT/sevenzip/
     ]]
