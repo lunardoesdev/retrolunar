@@ -30,6 +30,35 @@ return system({
         # No -Wl,--undefined-version: that's ELF-only, ld for PE fails.
         LDFLAGS="-L$PREFIX/lib"
         LDFLAGS="$LDFLAGS -Wl,-rpath-link,$PREFIX/lib"
+        # The Windows import libraries are NOT in $LDFLAGS, and that is a
+        # deliberate result of measuring where they have to land.
+        #
+        # cmake seeds CMAKE_EXE_LINKER_FLAGS from $LDFLAGS on its own
+        # (CMakeCommonLanguageInclude.cmake:9 appends "$ENV{LDFLAGS}" to
+        # CMAKE_EXE_LINKER_FLAGS_INIT), so putting them there does put them
+        # on the link line -- but BEFORE the archives that reference them.
+        # i2pd links its static libs through a response file, so libcrypto.a
+        # is scanned after every linker flag, and ld does not revisit an
+        # archive it already passed. Measured, with the objects from a real
+        # failed build:
+        #   ... -lcrypt32 -lole32 -loleaut32 -luuid -lgdi32 \
+        #       -Wl,--whole-archive objects.a ... @linkLibs.rsp
+        #     -> undefined reference to `__imp_CertFindCertificateInStore'
+        # and the same flags moved to the END of the identical link line:
+        #     -> i2pd.exe, clean link.
+        #
+        # CMAKE_REQUIRED_LIBRARIES is the variable i2pd itself forwards to
+        # the final link (build/CMakeLists.txt:409), so it lands after
+        # linkLibs.rsp, which is the position that resolves.
+        #
+        # -lcrypt32 is the load-bearing one: OpenSSL's mingw build reaches
+        # the Windows certificate store, so libcrypto.a itself carries the
+        # __imp_CertFindCertificateInStore reference. -lole32/-loleaut32/
+        # -luuid are what Win32/COM consumers need (CoCreateInstance,
+        # CoUninitialize, the IID_/CLSID_ constants); -lgdi32 is parity with
+        # upstream's Makefile.mingw:44-52. Upstream's cmake only appends
+        # crypt32 for MSVC (build/CMakeLists.txt:378-381), so a mingw build
+        # has to get these from the system.
         export LDFLAGS
         # Look up .pc files in our prefix, ignore host ones.
         PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig"
@@ -59,6 +88,20 @@ return system({
         CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=$OUT"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_PREFIX_PATH=$PREFIX"
+        # The Windows import libraries go here, at the END of the link line,
+        # not in $LDFLAGS. See the comment on $LDFLAGS above for the
+        # measurement: cmake seeds CMAKE_EXE_LINKER_FLAGS from $LDFLAGS, which
+        # places those flags BEFORE the archives that reference them, and ld
+        # does not revisit an archive it has already scanned.
+        #
+        # CMAKE_REQUIRED_LIBRARIES is the variable i2pd forwards to its final
+        # link (build/CMakeLists.txt:409), so it lands after linkLibs.rsp.
+        # The name is unfortunate -- "required" reads like a test-only thing,
+        # and for most projects it is indeed used by try_compile -- but the
+        # project already puts it on the real link line, which is what we
+        # need. It is also harmless elsewhere: a project that only uses it in
+        # try_compile links exactly as before.
+        CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_REQUIRED_LIBRARIES=crypt32\;ole32\;oleaut32\;uuid\;gdi32"
         # cmake's compiler check links a test program and then runs it. A
         # cross target binary cannot run here, and running one would be
         # emulation, which we never do: link a static library instead.
@@ -72,6 +115,20 @@ return system({
         # emulator. Pin the host make.
         CMAKE_MAKE_PROGRAM="$(command -v make)"
         CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_MAKE_PROGRAM=$CMAKE_MAKE_PROGRAM"
+        # ZLIB_ROOT is a search-path hint (FindZLIB.cmake:140-143 searches it
+        # first), and it is ALSO read directly by projects: i2pd does
+        # `link_directories(${ZLIB_ROOT}/lib)` at build/CMakeLists.txt:314.
+        # Left unset, that expands to the literal path /lib, and on this
+        # build host /lib is a symlink to /usr/lib -- the HOST's library
+        # directory. So the target link line grew `-L/lib`, and every
+        # `-lpthread` after it resolved to glibc's libpthread.a, which on
+        # this host is an 8-byte empty archive (`!<arch>\n`, verified with
+        # od). mingw's real winpthreads archive at
+        # /usr/x86_64-w64-mingw32/lib/libpthread.a was never reached and the
+        # link died on `undefined reference to pthread_self' and every other
+        # winpthreads symbol. A host library directory on a target link line
+        # is never what anyone meant; pointing the variable at $PREFIX is.
+        CMAKE_FLAGS="$CMAKE_FLAGS -DZLIB_ROOT=$PREFIX"
         export CMAKE_TOOLCHAIN_FILE CMAKE_PREFIX_PATH CMAKE_FLAGS
         MESON_CROSS_FILE="$SYSDIR/crossfile-x86_64-mingw.ini"
         MESON_FLAGS="--prefix=$OUT"
