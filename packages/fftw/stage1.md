@@ -93,9 +93,19 @@ is guarded with a fallback. `armv7a-android*` and `i686-android*` match
    will satisfy — the same defect `topackage.md:126-133` records for ISA-L.
    Single-threaded FFTW is the correct default for a library prefix, and a
    consumer wanting threads can add it later.
-5. **`--enable-static --disable-shared` with `--with-pic`** matches the
-   repo-wide static-only policy. `--with-pic` defaults to "use PIC for both",
-   so it is explicit rather than a change of behaviour.
+5. **`--enable-static --disable-shared`** matches the repo-wide static-only
+   policy. **No PIC flag is passed, and none should be.** An earlier draft of
+   this recipe passed `--with-pic` on the grounds that it made the archive
+   position-independent; that was wrong and the flag has been removed. It is
+   *libtool's* option, not fftw's: fftw spells it `--enable-pic[=PKGS]`
+   (`configure:1620`), libtool parses both spellings into `pic_mode`
+   (`configure:10406-10446`), and fftw itself never reads `pic_mode` —
+   `PIC` appears **zero** times in `config.h.in`, and the only occurrence of
+   "pic" in `configure.ac` is line 333, the `MPICC` assignment. So the flag
+   would have been inert while the comment claimed it was load-bearing, which
+   is the exact "a flag that does not do what the recipe says" failure. PIC
+   comes from `$CFLAGS`, which every system in this tree already sets to
+   `-O2 -fPIC`.
 6. **The SIMD answer is a policy choice worth naming.** A scalar libfftw3.a
    is correct everywhere and portable, which is what a shared prefix wants.
    A consumer wanting NEON performance adds `-DFFTW_ENABLE_NEON` or rebuilds
@@ -111,10 +121,17 @@ is guarded with a fallback. `armv7a-android*` and `i686-android*` match
 - `llvm-nm --defined-only lib/libfftw3.a | grep -cw fftw_plan` — expected
   **non-zero**; `fftw_plan` is the one symbol every consumer needs and its
   absence would mean a truncated or wrong archive.
-- `grep -c 'HAVE_NEON\|HAVE_AVX2\|HAVE_SSE2' $WORK/config.h` should be **0
-  nonzero defines** — that is the check that the scalar build actually
-  happened. State the expected value (zero) so it can be compared rather
-  than inferred.
-- `ls $OUT/bin/` — expected to contain `fftw3-wisdom` only, and it must be
-  `ELF 64-bit LSB pie executable, ARM aarch64` (a target binary that is
-  installed and never run).
+- **The scalar build, checked on the installed archive.** `$WORK` is deleted
+  by the block's `EXIT` trap on success, so a post-build check must read the
+  installed library instead. `ar t lib/libfftw3.a | grep -cE
+  'sse2|avx|avx2|avx512|neon|vsx|altivec|kcvi'` must be **0** — that is the
+  check that no SIMD codelet library was linked in. Expect a **non-zero**
+  count for `ar t lib/libfftw3.a | grep -c scalar_codelets`, since the scalar
+  codelets are always built. Stating the expected value (zero) lets a reader
+  compare rather than infer.
+- `ls $PREFIX/bin/fftw3-wisdom` — the file is expected to exist, and
+  `$OBJDUMP -f` on it must print `ELF 64-bit LSB pie executable, ARM aarch64`
+  (a target binary that is installed and never run). Scope it to fftw's own
+  name: `ls $PREFIX/bin` is not a valid scope check because it holds every
+  package's programs in the prefix, and `$OUT` no longer exists once the
+  block has published.

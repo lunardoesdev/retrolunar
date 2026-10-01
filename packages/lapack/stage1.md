@@ -86,16 +86,26 @@ here: LAPACK never gets as far as compiling any C.
 
 **Risks / what a reviewer should check.**
 
-1. **This recipe is expected to fail, deliberately.** `generic.lua` carries a
-   comment saying so and names the blocking line. It should be reviewed as a
-   *forecast*, not built. `topackage.md:298` stays unchecked and should
-   probably record the blocker in the same style as the other blocked entries
-   (e.g. `:70` Pkgconf, `:20` Elfutils) — I was told not to edit that file.
-2. **Do not let a builder "fix" this by pointing `$FC` at the host's gfortran.**
-   There isn't one, and if one appeared it would produce a host x86-64 Fortran
-   object in an aarch64 library. The only honest fixes are a real target
-   Fortran compiler in a system file, or a C-only LAPACK from some other
-   source.
+1. **The recipe refuses immediately, and that refusal is the honest
+   expression of the blocker.** `generic.lua` contains no cmake invocation
+   at all: it prints a six-line explanation naming `CMakeLists.txt:313` and
+   exits 1. An earlier draft of this recipe carried three runnable
+   `cmake` lines with the blocker recorded only in a comment above them,
+   which is a recipe that *looks* buildable and fails deeper in — a comment
+   is not a guard. The package is now impossible to mistake for a build
+   regression, and the refusal costs nothing to run. **A builder who hits it
+   should record the refusal and stop; it is not a regression to work
+   around, and it must not be "fixed" by installing a Fortran compiler.**
+   `topackage.md:298` stays unchecked; that file should record the blocker in
+   the same style as the other blocked entries (e.g. `:70` Pkgconf, `:20`
+   Elfutils) — I was told not to edit it.
+2. **This is a system-level gap, not a package defect.** The single missing
+   thing is a *target* Fortran compiler: a `$FC` exported by the system
+   files, in the same spirit as the `ac_cv_func_ffsl` export AGENTS.md
+   describes for the Android systems. That is outside one package's scope, so
+   it is recorded here for the director rather than worked around. It is also
+   almost certainly the wrong fix — see the cheaper route at the end of this
+   document.
 3. **The version is slightly inconsistent upstream.** `CMakeLists.txt:5-7`
    reads `LAPACK_MINOR_VERSION 12` / `LAPACK_PATCH_VERSION 0` in the 3.12.1
    tarball, so upstream forgot to bump its own CMake version string. Irrelevant

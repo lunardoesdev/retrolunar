@@ -23,11 +23,18 @@ return recipe({
         # --disable-doc: doc/Makefile.am:3 builds info_TEXINFOS through
         # makeinfo, and Texinfo is not buildable here.
         #
+        # No PIC flag is passed. libtool's --enable-pic/--with-pic is not
+        # fftw's to consult: the word "pic" appears once in configure.ac, at
+        # line 333, and it is the MPICC assignment, and PIC never reaches
+        # config.h.in at all. Every system in this tree already sets
+        # $CFLAGS="-O2 -fPIC", so the archive is position-independent without
+        # a flag here.
+        #
         # Threads are left off: they default off, and turning them on would
         # run the ACX_PTHREAD probe, which wants a separate -lpthread that no
         # Android sysroot has to offer.
-        ./configure $AUTOCONF_CONFIGURE_FLAGS --enable-static --disable-shared --with-pic --disable-fortran --disable-doc
-touch aclocal.m4 configure config.h.in
+        ./configure $AUTOCONF_CONFIGURE_FLAGS --enable-static --disable-shared --disable-fortran --disable-doc
+        touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' | xargs touch
         make -j1
         make install
