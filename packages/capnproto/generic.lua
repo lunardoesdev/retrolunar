@@ -35,41 +35,54 @@ return recipe({
         ./configure $AUTOCONF_CONFIGURE_FLAGS --enable-static --disable-shared --without-fibers --with-zlib --with-openssl
         touch aclocal.m4 configure config.h.in
         find . -name 'Makefile.in' | xargs touch
-        # Deliberately NOT `make all` and NOT `make install`. Both pull in
-        # BUILT_SOURCES (Makefile.am:496), which is $(test_capnpc_outputs),
-        # and those come from test_capnpc_middleman, whose rule runs the
-        # freshly built TARGET capnp binary:
-        #   ./capnp$(EXEEXT) compile ... -o./capnpc-c++$(EXEEXT):src
-        # (Makefile.am:487-490). That is a target binary executed on the build
-        # machine, which this repo never does, and on a cross build it could
-        # not run at all without an emulator. `install` depends on
-        # BUILT_SOURCES directly (Makefile.in:3914) and install-am on all-am
-        # (Makefile.in:3921), so the plain targets are unusable here.
+        # Deliberately NOT `make all` and NOT `make install`. The reason is
+        # that both of their rules RUN the freshly built target capnp binary.
+        # BUILT_SOURCES (Makefile.am:496) is $(test_capnpc_outputs), which is
+        # produced by test_capnpc_middleman, and that rule executes the target
+        # program just linked:
+        #   ./capnp$(EXEEXT) compile --src-prefix=$(srcdir)/src \
+        #       -o./capnpc-c++$(EXEEXT):src ...
+        # (Makefile.am:487-490). Executing a target binary is something this
+        # repo never does, and on a cross build the binary could not run at all
+        # without an emulator. BUILT_SOURCES is a prerequisite of `all`
+        # (Makefile.in:1531), `install` (:3914), `install-exec` (:3916),
+        # `check` (:3902) and `distdir` (:3726), so those five targets are all
+        # unusable here.
         #
-        # The narrow targets below reach exactly what a consumer needs, and
-        # their only prerequisites are the libraries and headers themselves
-        # (Makefile.in:1662 install-libLTLIBRARIES: $(lib_LTLIBRARIES)), so
-        # none of them can reach BUILT_SOURCES. The libraries themselves need
-        # no code generation: every file in capnpc_outputs (Makefile.am:102)
-        # - including the compiler's own lexer.capnp.c++ and
-        # grammar.capnp.c++ - ships pre-generated in the tarball.
+        # The two targets below are the parts of the install that do NOT go
+        # through BUILT_SOURCES. install-libLTLIBRARIES is named on its own
+        # because it sits in install-exec-am (Makefile.in:4160) next to
+        # install-binPROGRAMS, and its only prerequisite is
+        # $(lib_LTLIBRARIES) (Makefile.in:1662). install-data is one target
+        # that covers the entire header/.pc/CMake half:
+        #   install-data: install-data-am            (Makefile.in:3918)
+        #   install-data-am: install-cmakeconfigDATA install-dist_includecapnpDATA
+        #     install-dist_includecapnpcompatDATA install-includecapnpHEADERS
+        #     install-includecapnpcompatHEADERS install-includekjHEADERS
+        #     install-includekjcompatHEADERS install-includekjparseHEADERS
+        #     install-includekjstdHEADERS install-pkgconfigDATA  (Makefile.in:4149-4154)
+        # install-data pulls in install-cmakeconfigDATA, which is how
+        # lib/cmake/CapnProto/CapnProtoConfig.cmake lands in $OUT so a
+        # consumer's find_package(CapnProto) works.
+        #
+        # Note what is NOT the reason: capnpc_outputs (Makefile.am:102) is a
+        # bare variable that is never a target and never a prerequisite - the
+        # .capnp.c++/.capnp.h files are ordinary in-tree sources compiled
+        # directly (e.g. c++.capnp.c++ is in libcapnp_la_SOURCES), and they
+        # ship that way in the tarball. That is why no library target has to
+        # generate anything, and it is why the targets above are safe; but the
+        # thing that makes `all` unusable is the RUN in the middleman rule.
         #
         # bin_PROGRAMS (capnp, capnpc-capnp, capnpc-c++, Makefile.am:416) are
-        # left out: they are target binaries nothing in this prefix runs.
-        # Generate code with a host capnp instead.
+        # omitted BY CHOICE, not because the build system forced it: they
+        # compile and link fine on a cross build - nothing runs them - and only
+        # install-binPROGRAMS is left out here. The cost is real and worth
+        # stating: without bin/capnp nothing in this prefix can generate code
+        # against these headers, so this is a library-only package, and
+        # libcapnpc.a (which IS installed) is the plugin half of a toolchain
+        # whose driver half is absent. Consumers generate code with a host
+        # capnp.
         make -j1 install-libLTLIBRARIES
-        make -j1 install-pkgconfigDATA
-        make -j1 install-includecapnpHEADERS
-        # The .capnp schema files themselves are dist_includecapnp_DATA /
-        # dist_includecapnpcompat_DATA, so their install targets carry the
-        # "dist_" prefix (Makefile.in:3385,3406); there is no plain
-        # install-includedirDATA.
-        make -j1 install-dist_includecapnpDATA
-        make -j1 install-dist_includecapnpcompatDATA
-        make -j1 install-includecapnpcompatHEADERS
-        make -j1 install-includekjHEADERS
-        make -j1 install-includekjcompatHEADERS
-        make -j1 install-includekjparseHEADERS
-        make -j1 install-includekjstdHEADERS
+        make -j1 install-data
     ]]
 })

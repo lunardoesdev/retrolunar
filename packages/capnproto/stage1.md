@@ -23,8 +23,14 @@
 shipped `.capnp` schema files; 11 `.pc` files (`pkgconfig_DATA`,
 Makefile.am:133) and the CMake package config.
 
-**No tools installed.** `bin_PROGRAMS = capnp capnpc-capnp capnpc-c++`
-(Makefile.am:416) are deliberately left out — see the recipe.
+**No tools installed, and that is a deliberate choice with a real cost.**
+`bin_PROGRAMS = capnp capnpc-capnp capnpc-c++` (Makefile.am:416) compile and
+link fine on a cross build — nothing in the build runs them, so the build
+system does not force their exclusion; only `install-binPROGRAMS` is left out.
+But omitting them means no consumer in this prefix can generate code against
+these headers, so this is a **library-only** package and `libcapnpc.a` (which
+*is* installed) is the plugin half of a toolchain whose driver half is absent.
+Consumers generate code with a host `capnp`.
 
 ## The one thing that decides this package
 
@@ -37,17 +43,29 @@ binary** (Makefile.am:487-490):
 
 `install` depends on `BUILT_SOURCES` directly (Makefile.in:3914) and
 `install-am` on `all-am` (Makefile.in:3921), so neither plain target can be
-used on a cross build. The recipe therefore uses narrow install targets, whose
-only prerequisites are the libraries and headers
-(Makefile.in:1662: `install-libLTLIBRARIES: $(lib_LTLIBRARIES)`).
+used on a cross build. The recipe instead uses the two install targets that do
+not pass through `BUILT_SOURCES`:
+`install-libLTLIBRARIES` (Makefile.in:1662, prerequisite `$(lib_LTLIBRARIES)`)
+and `install-data`, which covers the whole header/`.pc`/CMake half in one go
+(`Makefile.in:4149-4154`) and includes `install-cmakeconfigDATA`, so the CMake
+package config really is installed.
 
-This is safe because **no library source needs code generation**: every entry
-of `capnpc_outputs` (Makefile.am:102-120) ships pre-generated in the tarball.
-Verified: exactly 9 `*.capnp.c++` and 9 `*.capnp.h` files exist in the tree,
-and their names match `capnpc_outputs` one-for-one, including the compiler's
-own `lexer.capnp.c++` and `grammar.capnp.c++`. Every name in
-`test_capnpc_outputs` (`test.capnp.c++` and friends) is **absent** — confirmed
-by name, not inferred from a failed build.
+**What actually makes the narrow targets safe** is not "the `.capnp.c++` files
+ship pre-generated" as a separate safety property. `capnpc_outputs`
+(Makefile.am:102) is a **bare variable**: `grep -n capnpc_outputs Makefile.am`
+returns exactly two hits, the definition and nothing else. It is never a
+target, never a prerequisite, and never appears in any `_SOURCES`. The
+`.capnp.c++`/`.capnp.h` files are **ordinary sources** compiled directly —
+`c++.capnp.c++` is in `libcapnp_la_SOURCES` in `Makefile.in` — and they ship
+that way in the tarball. That is why no library target has to generate
+anything; the thing that makes `all` unusable is the **RUN** in the
+middleman rule above, and nothing else.
+
+Evidence for the source claim, by name rather than by failed build: the tree
+contains exactly 9 `*.capnp.c++` and 9 `*.capnp.h`, matching `capnpc_outputs`
+one-for-one including the compiler's own `lexer.capnp.c++` and
+`grammar.capnp.c++`, while every name in `test_capnpc_outputs`
+(`test.capnp.c++` and friends) is **absent**.
 
 ## Optional-dependency decisions
 
@@ -74,7 +92,7 @@ by name, not inferred from a failed build.
 | aarch64-android24 | WILL BUILD | As above. |
 | aarch64-android35 | WILL BUILD | As above. |
 | x86_64-android35 | WILL BUILD | As above; endian-neutral (`src/capnp/endian.h`). |
-| x86_64-mingw | WILL BUILD | Cap'n Proto has a first-class Windows path: configure.ac:70-79 branches on `host_os` matching `*mingw*` and sets `-mthreads`, no pthread libs and `ASYNC_LIBS=-lws2_32`; the sources carry `async-win32.c++`, `filesystem-disk-win32.c++` and `kj/async-win32.h`. `AX_CXX_COMPILE_STDCXX_14` (configure.ac:68) is satisfied by mingw g++. Fibers are a non-issue: configure.ac:255-257 treats `mingw*` as always supporting them, but we pass `--without-fibers`, which takes the same path everywhere. |
+| x86_64-mingw | WILL BUILD | Cap'n Proto has a first-class Windows path: configure.ac:70-79 branches on `host_os` matching `*mingw*` and sets `PTHREAD_CFLAGS="-mthreads"`, no pthread libs and `ASYNC_LIBS=-lws2_32`; the sources carry `async-win32.c++`, `filesystem-disk-win32.c++` and `kj/async-win32.h`. The one macro this row used to leave unexamined is `AX_CXX_COMPILE_STDCXX_14` (configure.ac:68), so it was checked directly: `m4/ax_cxx_compile_stdcxx_14.m4:83-93` compiles a test body using `<type_traits>`, a deduced return type, a generic lambda and an init-capture, and `x86_64-w64-mingw32-g++` (GCC 16.2.0) compiles that body clean at the default standard, at `-std=c++14` and at `-std=gnu++14`. Fibers are a non-issue: configure.ac:255-257 treats `mingw*` as always supporting them, but we pass `--without-fibers`, which takes the same path everywhere. |
 | clang-native | WILL BUILD | Native build, nothing cross-specific. `topackage.md:413` lists Cap'n-Proto as unchecked, so there is no prior build record to lean on. |
 
 armv7a-androidNN and i686-androidNN behave like aarch64: no arch-specific code
@@ -82,12 +100,14 @@ paths are selected by the recipe, and fibers are off.
 
 ## Risks / what a reviewer should check
 
-- **The narrow-target approach is the whole correctness argument.** If any of
-  the `install-*` targets named in `generic.lua` is misspelled, make fails
-  loudly (no such target) — that is safe. The risk to check is the opposite:
-  that one of them *does* transitively reach `BUILT_SOURCES`. The target names
-  were read out of `Makefile.in` (3385, 3406, 1662, and the
-  `install-include*HEADERS` family) rather than assumed.
+- **The narrow-target approach is the whole correctness argument.** If
+  `install-libLTLIBRARIES` or `install-data` is misspelled, make fails loudly
+  (no such target) — that is safe. The risk to check is the opposite: that one
+  of them transitively reaches `BUILT_SOURCES`. Verified rather than assumed:
+  `install-data` → `install-data-am` (Makefile.in:3918,4149-4154) lists ten
+  data/header/pc targets and none of them has a `BUILT_SOURCES` prerequisite,
+  while `BUILT_SOURCES` appears only in `all`, `check`, `distdir`, `install`,
+  `install-exec` and `CLEANFILES` (Makefile.in:1531,3726,3902,3914,3916,3961).
 - **`libkj-test.a` is still built.** It is a real `lib_LTLIBRARIES` entry
   (Makefile.am:261,263) and is installed with the rest. It is the KJ test
   harness, not the test suite itself; nothing runs it. Flagged so a reviewer
@@ -105,5 +125,13 @@ paths are selected by the recipe, and fibers are off.
 - `pkg-config --modversion capnp` → `1.5.0`
 - `readelf -h lib/libcapnp.a` → `Machine: AArch64` on Android targets
 - `[ -x bin/capnp ]` must FAIL — the compiler binaries are intentionally absent
-- `ls lib/pkgconfig | grep -c capnp` → 11 (the `CAPNP_PKG_CONFIG_FILES` list at
-  configure.ac:156-168 names exactly 11)
+- `ls lib/pkgconfig | grep -cE '^(capnp|capnpc|kj-)'` → **11**. The
+  `CAPNP_PKG_CONFIG_FILES` list (configure.ac:156-168) names exactly 11 files:
+  5 beginning `capnp`/`capnpc` (capnp, capnpc, capnp-rpc, capnp-json,
+  capnp-websocket) and 6 beginning `kj-` (kj, kj-async, kj-http, kj-gzip,
+  kj-tls, kj-test). Note that a plain `grep -c capnp` would return **5**, not
+  11 — the `kj-*.pc` files do not contain the string "capnp" — so the filter
+  has to cover both prefixes.
+- `test -f lib/cmake/CapnProto/CapnProtoConfig.cmake` — this is the check
+  that would have caught the dropped `install-cmakeconfigDATA`; it is installed
+  only because the recipe uses `install-data`.
