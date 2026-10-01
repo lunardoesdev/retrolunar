@@ -9,10 +9,24 @@ I did not build.
 
 - **No autotools timestamp guard is needed and none is present**, which is
   correct: Tcl 8.6's `configure` is a hand-written shell script, not autoconf.
-  Verified against the real tree — `configure.ac` has no `AC_CONFIG_HEADERS` and
-  the tree ships no `config.h.in`. This is the same "the build system is not
-  what you assume" point vim's recipe makes, handled correctly here by omission
-  rather than by a stray `touch`.
+  Verified against the real tree — there is **no top-level `configure.ac` at
+  all**; the file driving `./unix/configure` is `unix/configure.in`, and
+  `unix/configure.in:11` *is* `AC_CONFIG_HEADERS([tclConfig.h:../unix/tclConfig.h.in])`,
+  with `unix/tclConfig.h.in` present at 13655 bytes and byte-identical
+  (sha256) across three independent mirrors. An earlier version of this review
+  claimed the opposite — that `configure.ac` has no `AC_CONFIG_HEADERS` and the
+  tree ships no `config.h.in` — which was wrong on both counts: it looked for
+  the wrong file and the wrong template name.
+
+  Worth recording why that wrong reading is so easy to reach: the shipped
+  `./unix/configure` is **pregenerated** (580358 bytes) and contains **no**
+  `ac_config_headers=` assignment and **zero** references to `tclConfig.h`,
+  because only `macosx/configure.ac` does `m4_define(SC_USE_CONFIG_HEADERS)`.
+  Anyone reading the generated script rather than `unix/configure.in` would
+  reach the same false conclusion.
+  This is the same "the build system is not what you assume" point vim's
+  recipe makes, handled correctly here by omission rather than by a stray
+  `touch`.
 - `./unix/configure $AUTOCONF_CONFIGURE_FLAGS --mandir="$OUT/share/man"
   --disable-rpath` run from the source root. Tcl's configure genuinely accepts
   being invoked from the root and then builds in the current directory — the
@@ -50,5 +64,12 @@ and it is the one thing `stage1.md` should make explicit.
 - `include/tcl8.6/tcl.h` and, critically, the private headers — `[ -f include/tcl8.6/tcl.h ]` **and** `[ -f include/tcl8.6/tclInt.h ]`. `tclInt.h` is the one `install-private-headers` exists to deliver; if it is missing, `packages/expect` is broken and nothing else here will say so.
 - `lib/tcl8.6/msgcat.msg` (or the equivalent under `$OUT/lib`) — `[ -f lib/tcl8.6/msgcat.msg ]`; without it Tcl's library initialisation fails at runtime.
 - `share/man/man3/Tcl*.3` — `[ -d share/man/man3 ]`, the check that `--mandir` took.
-- No `.pc` unless the release ships one; consumers use `find_package(Tcl)` or the raw `-ltcl8.6`.
+- **No `.pc` is shipped upstream, but a CMake package config is.** Upstream
+  releases no pkg-config file, so the `.pc` this recipe writes by hand is not
+  redundant. It does ship `cmake/GladConfig.cmake`, whose own header says
+  "Consumers can link to the the library" (sic, upstream's typo), so a claim
+  that upstream "has nothing to describe" was too strong — the accurate
+  statement is that upstream describes the library for CMake consumers but
+  ships nothing for pkg-config consumers. Consumers here may use the recipe's
+  `.pc`, `find_package(Tcl)`, or the raw `-ltcl8.6`.
 - **Never run `bin/tclsh`** — target binary. This matters more here than for most packages, because a builder testing "does tclsh work" would be reaching for a host tclsh that is not this one.
