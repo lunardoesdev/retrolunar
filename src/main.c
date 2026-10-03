@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -12,6 +16,8 @@
 #endif
 
 /* Bare `retrolunar` prints usage on stdout and exits 0; there is no REPL. */
+
+#define PACKAGES_REPO "https://github.com/lunardoesdev/retrolunar-packages"
 
 extern const char *loader_lua;
 
@@ -43,27 +49,98 @@ static const char *default_nest(void) {
   return buf;
 }
 
-static int do_install(lua_State *L, int argc, char **argv) {
+/* True when dir exists and holds at least one entry. An empty directory is
+ * not a usable packages tree: the loader would resolve nothing, and an
+ * interrupted clone leaves exactly that behind. */
+static int dir_has_entries(const char *path) {
+  DIR *d = opendir(path);
+  if (d == NULL)
+    return 0;
+  int found = 0;
+  struct dirent *e;
+  while ((e = readdir(d)) != NULL) {
+    if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
+      continue;
+    found = 1;
+    break;
+  }
+  closedir(d);
+  return found;
+}
+
+/* Packages tree when --packages is omitted:
+ * $HOME/.cache/retrolunar/packages. Cloned on first use, updated in place
+ * afterwards. A failed update is ignored — an already-populated tree is
+ * still good enough to resolve recipes against — but an unusable tree is
+ * fatal, so a half-finished clone cannot masquerade as a working one.
+ * Returns NULL when no tree could be obtained, which sends the caller to
+ * an error message. */
+static const char *default_packages(void) {
+  const char *home = getenv("HOME");
+  if (home == NULL || home[0] == '\0')
+    return NULL;
+  static char dir[PATH_MAX], root[PATH_MAX], cache[PATH_MAX];
+  if (snprintf(cache, sizeof cache, "%s/.cache", home) >= (int)sizeof cache)
+    return NULL;
+  if (snprintf(root, sizeof root, "%s/retrolunar", cache) >= (int)sizeof root)
+    return NULL;
+  if (snprintf(dir, sizeof dir, "%s/packages", root) >= (int)sizeof dir)
+    return NULL;
+  /* Both levels, since ~/.cache is itself absent on a fresh account. */
+  if (mkdir(cache, 0755) != 0 && errno != EEXIST)
+    return NULL;
+  if (mkdir(root, 0755) != 0 && errno != EEXIST)
+    return NULL;
+  if (dir_has_entries(dir)) {
+    /* Best-effort refresh. Any failure here is deliberately non-fatal. */
+    char pull[PATH_MAX];
+    if (snprintf(pull, sizeof pull, "git -C '%s' pull --ff-only >/dev/null 2>&1", dir) <
+        (int)sizeof pull)
+      if (system(pull) == -1) { /* ignored on purpose */ }
+  } else {
+    char clone[PATH_MAX];
+    if (snprintf(clone, sizeof clone,
+                 "git clone --depth=1 '%s' '%s' >/dev/null 2>&1",
+                 PACKAGES_REPO, dir) < (int)sizeof clone)
+      if (system(clone) == -1) { /* ignored; checked below */ }
+  }
+  return dir_has_entries(dir) ? dir : NULL;
+}
+
+/* The tree to resolve recipes from: --packages when given, otherwise the
+ * bootstrapped default. Reports why it failed and returns NULL. */
+static const char *resolve_packages(const char *given) {
+  if (given != NULL)
+    return given;
+  const char *dir = default_packages();
+  if (dir == NULL) {
+    fprintf(stderr,
+      "retrolunar: no packages tree and could not get one from %s\n"
+      "  pass --packages DIR, or clone %s yourself\n",
+      PACKAGES_REPO, PACKAGES_REPO);
+    return NULL;
+  }
+  return dir;
+}
+
+static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
   const char *nest = NULL;
-  const char *pkgs = NULL;
   int first = -1;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--nest") == 0) {
       if (++i >= argc) goto usage;
       nest = argv[i];
     } else if (strcmp(argv[i], "--packages") == 0) {
+      /* Already resolved and passed in; skip the flag and its value. */
       if (++i >= argc) goto usage;
-      pkgs = argv[i];
     } else if (first < 0) {
       first = i;
     }
   }
   if (nest == NULL)
     nest = default_nest();
-  if (nest == NULL || pkgs == NULL || first < 0)
+  if (nest == NULL || first < 0)
     goto usage;
-  lua_pushstring(L, pkgs);
-  lua_setglobal(L, "RETROLUNAR_PKGS_BOOT");
   lua_getglobal(L, "require");
   if (!lua_isfunction(L, -1)) {
     fprintf(stderr, "install: loader not ready\n");
@@ -105,24 +182,20 @@ usage:
   return LUA_ERRERR;
 }
 
-/* deps --packages DIR <pack[@sys]>... — resolve the same queue install
+/* deps [--packages DIR] <pack[@sys]>... — resolve the same queue install
  * would build, and print it instead of emitting a build script. Queue
  * order is dependency order: leaves first, requested packages last. */
 static int do_deps(lua_State *L, int argc, char **argv) {
-  const char *pkgs = NULL;
   int first = -1;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--packages") == 0) {
       if (++i >= argc) goto usage;
-      pkgs = argv[i];
     } else if (first < 0) {
       first = i;
     }
   }
-  if (pkgs == NULL || first < 0)
+  if (first < 0)
     goto usage;
-  lua_pushstring(L, pkgs);
-  lua_setglobal(L, "RETROLUNAR_PKGS_BOOT");
   lua_getglobal(L, "require");
   if (!lua_isfunction(L, -1)) {
     fprintf(stderr, "deps: loader not ready\n");
@@ -190,19 +263,26 @@ static void usage(FILE *out, const char *prog) {
     "  script    run a Lua file.\n"
     "\n"
     "Example:\n"
-    "  git clone https://github.com/lunardoesdev/retrolunar-packages\n"
-    "  %s install --packages ./retrolunar-packages 'python@aarch64-android24'\n"
-    "  %s deps --packages ./retrolunar-packages 'python@aarch64-android24'\n"
+    "  %s deps 'python@aarch64-android24'\n"
+    "  %s install 'python@aarch64-android24' > build.sh\n"
+    "\n"
     "  # --nest defaults to $HOME/.cache/retrolunar/nestdir\n"
+    "\n"
+    "  # for a packages tree of your own:\n"
+    "  git clone https://github.com/lunardoesdev/retrolunar-packages\n"
+    "  %s deps --packages ./retrolunar-packages 'python@aarch64-android24'\n"
     "\n"
     "With no arguments, print this help.\n"
     "\n"
     "Options:\n"
     "  --nest DIR       output root for per-system prefixes (install);\n"
     "                   defaults to $HOME/.cache/retrolunar/nestdir\n"
-    "  --packages DIR   packages tree to resolve recipes from\n"
+    "  --packages DIR   packages tree to resolve recipes from;\n"
+    "                   defaults to $HOME/.cache/retrolunar/packages, cloned\n"
+    "                   from %s on first use and refreshed on later runs\n"
     "  -h, --help       show this help and exit\n",
-    prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog, prog);
+    prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog, prog, prog,
+    PACKAGES_REPO);
 }
 
 int main(int argc, char **argv) {
@@ -224,12 +304,39 @@ int main(int argc, char **argv) {
   luaL_openlibs(L);
   lua_pushstring(L, RETROLUNAR_DEFAULT_SYSTEM);
   lua_setglobal(L, "DEFAULT_SYSTEM");
-  for (int i = 1; i < argc - 1; i++) {
-    if (strcmp(argv[i], "--packages") == 0) {
-      lua_pushstring(L, argv[i + 1]);
-      lua_setglobal(L, "RETROLUNAR_PKGS_BOOT");
-      break;
+  /* Resolve the packages tree before the loader runs: it reads
+   * RETROLUNAR_PKGS_BOOT once at init and closes over the result, so a
+   * global set afterwards would not change where recipes are looked up. */
+  const char *pkgs_boot = NULL;
+  if (argc >= 2 && (strcmp(argv[1], "install") == 0 ||
+                    strcmp(argv[1], "deps") == 0)) {
+    /* Require at least one target before touching the network: a plain
+     * `deps` with no package should not clone the tree just to then fail
+     * on the usage message. */
+    int targets = 0, bad = 0;
+    pkgs_boot = NULL;
+    for (int i = 2; i < argc; i++) {
+      if (strcmp(argv[i], "--packages") == 0) {
+        if (++i >= argc) { bad = 1; break; }
+        pkgs_boot = argv[i];
+      } else if (strcmp(argv[i], "--nest") == 0) {
+        if (++i >= argc) { bad = 1; break; }
+      } else {
+        targets++;
+      }
     }
+    if (bad || targets == 0) {
+      usage(stderr, argv[0]);
+      lua_close(L);
+      return 1;
+    }
+    pkgs_boot = resolve_packages(pkgs_boot);
+    if (pkgs_boot == NULL) {
+      lua_close(L);
+      return 1;
+    }
+    lua_pushstring(L, pkgs_boot);
+    lua_setglobal(L, "RETROLUNAR_PKGS_BOOT");
   }
   if (run_chunk(L, luaL_loadstring(L, loader_lua)) != LUA_OK) {
     lua_close(L);
@@ -238,7 +345,7 @@ int main(int argc, char **argv) {
 
   int status;
   if (argc >= 2 && strcmp(argv[1], "install") == 0)
-    status = do_install(L, argc, argv);
+    status = do_install(L, argc, argv, pkgs_boot);
   else if (argc >= 2 && strcmp(argv[1], "deps") == 0)
     status = do_deps(L, argc, argv);
   else if (argc == 3 && strcmp(argv[1], "-e") == 0)

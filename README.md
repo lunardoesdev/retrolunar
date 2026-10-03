@@ -10,26 +10,30 @@ Prerequisites: `meson`, `ninja`, a C compiler, `curl`, `git`, `sh`, and
 `flock` from util-linux.
 For Android targets: an Android SDK with an NDK (`ANDROID_HOME`).
 
-`--packages` points at a packages tree. One is published at
-<https://github.com/lunardoesdev/retrolunar-packages>:
+`--packages` points at a packages tree; it is optional. Left out, the tree
+is taken from `$HOME/.cache/retrolunar/packages`, cloned from
+<https://github.com/lunardoesdev/retrolunar-packages> on first use and
+refreshed with `git pull --ff-only` afterwards:
 
 ```sh
-git clone https://github.com/lunardoesdev/retrolunar-packages
+retrolunar deps 'python@aarch64-android24'   # clones the tree, then lists
 ```
 
-Put the clone wherever you like and pass its path as `--packages`, as in
-the example below.
+A failed refresh is ignored — a tree that is already there is good enough
+to resolve against, so an offline run still works. A tree that cannot be
+obtained at all (no `HOME`, clone failed, directory left empty by an
+interrupted clone) is an error: `retrolunar` says so and exits 1 rather
+than resolving against nothing. Pass `--packages DIR` to use a tree you
+keep somewhere else, as the CI example below does.
 
 ```sh
 # 1. Build retrolunar itself.
 meson setup builddir && ninja -C builddir retrolunar
 
 # 2. Generate the build script for what you want.
-./builddir/retrolunar install \
-  --packages ./retrolunar-packages 'python@aarch64-android24' > build.sh
+./builddir/retrolunar install 'python@aarch64-android24' > build.sh
 
-  # --nest is optional; it defaults to
-  #   $HOME/.cache/retrolunar/nestdir
+#    --nest defaults to $HOME/.cache/retrolunar/nestdir
 
 # 3. Check it, then run it.
 sh -n build.sh
@@ -57,7 +61,7 @@ guessing a location.
 asked for last:
 
 ```sh
-retrolunar deps --packages ./retrolunar-packages 'python@aarch64-android24'
+retrolunar deps 'python@aarch64-android24'
 ```
 
 ```
@@ -66,11 +70,13 @@ readline@aarch64-android24 8.2
 python@aarch64-android24 3.14.7
 ```
 
-The version is printed when the recipe set one. It resolves recipes and
-prints the result, nothing more: no script is written, no tarball is
-downloaded, nothing is compiled, and the nest is neither read nor created.
-`--nest` does not apply to `deps`. An unknown target fails with the
-module error and exit 1, as `install` does.
+The version is printed when the recipe set one. It prints the result and
+nothing more: no build script is written, no tarball is downloaded,
+nothing is compiled, and the nest is neither read nor created. What it
+does do is the packages bootstrap described under Quick start, so the
+first `deps` on a machine without a packages tree clones one.
+`--nest` does not apply to `deps`. An unknown target fails with the module
+error and exit 1, as `install` does.
 
 It takes the same `pack[@sys]` targets as `install`, including bare names
 and the `@native` alias, and several at once.
@@ -120,10 +126,10 @@ rm -rf stage
 ```
 
 `retrolunar` is self-contained — it links its embedded Lua statically,
-so the installed binary has no runtime dependency on the repo. It still
-needs a packages tree to install software from, passed with
-`--packages` (see Quick start); that directory is separate from the
-install prefix.
+so the installed binary has no runtime dependency on the repo. It does
+need `git` and network access on first run, to clone the packages tree
+into `$HOME/.cache/retrolunar/packages` (see Quick start); that cache is
+separate from the install prefix and is not touched by uninstalling.
 
 ### Uninstall
 
