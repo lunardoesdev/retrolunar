@@ -10,13 +10,23 @@ Prerequisites: `meson`, `ninja`, a C compiler, `curl`, `git`, `sh`, and
 `flock` from util-linux.
 For Android targets: an Android SDK with an NDK (`ANDROID_HOME`).
 
+`--packages` points at a packages tree. One is published at
+<https://github.com/lunardoesdev/retrolunar-packages>:
+
+```sh
+git clone https://github.com/lunardoesdev/retrolunar-packages
+```
+
+Put the clone wherever you like and pass its path as `--packages`, as in
+the example below.
+
 ```sh
 # 1. Build retrolunar itself.
 meson setup builddir && ninja -C builddir retrolunar
 
 # 2. Generate the build script for what you want.
-./builddir/retrolunar install --nest ./nest --packages ./packages \
-  'python@aarch64-android24' > build.sh
+./builddir/retrolunar install --nest ./nest \
+  --packages ./retrolunar-packages 'python@aarch64-android24' > build.sh
 
 # 3. Check it, then run it.
 sh -n build.sh
@@ -76,8 +86,9 @@ rm -rf stage
 
 `retrolunar` is self-contained — it links its embedded Lua statically,
 so the installed binary has no runtime dependency on the repo. It still
-needs a `packages/` tree to install software from, passed with
-`--packages`; that directory is separate from the install prefix.
+needs a packages tree to install software from, passed with
+`--packages` (see Quick start); that directory is separate from the
+install prefix.
 
 ### Uninstall
 
@@ -132,6 +143,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Clone the packages tree
+        run: git clone --depth=1 https://github.com/lunardoesdev/retrolunar-packages
       - name: Install host tools
         run: sudo apt-get update && sudo apt-get install -y
           meson ninja-build curl git pkg-config cmake autoconf make util-linux
@@ -144,7 +157,7 @@ jobs:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
           ./builddir/retrolunar install \
-            --nest ./nest --packages ./packages \
+            --nest ./nest --packages ./retrolunar-packages \
             'python@aarch64-android24' > build.sh
           sh -n build.sh
           sh build.sh

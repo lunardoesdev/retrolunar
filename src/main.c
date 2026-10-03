@@ -102,13 +102,17 @@ static void usage(FILE *out, const char *prog) {
     "  -e chunk  run a Lua chunk.\n"
     "  script    run a Lua file.\n"
     "\n"
-    "With no arguments, read Lua from stdin as a REPL.\n"
+    "Example:\n"
+    "  git clone https://github.com/lunardoesdev/retrolunar-packages\n"
+    "  %s install --nest ./nest --packages ./retrolunar-packages 'python@aarch64-android24'\n"
+    "\n"
+    "With no arguments, print this help.\n"
     "\n"
     "Options:\n"
     "  --nest DIR       output root for per-system prefixes (install)\n"
     "  --packages DIR   packages tree to resolve recipes from\n"
     "  -h, --help       show this help and exit\n",
-    prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM);
+    prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog);
 }
 
 int main(int argc, char **argv) {
