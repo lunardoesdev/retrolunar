@@ -75,6 +75,18 @@ keep it, run it again next week. `-x` runs it with `sh` straight away and
 exits with whatever the script exited with — if a recipe fails, so does
 the command, which is what you want in a script or a CI job.
 
+Builds are serial by default. `--cores N` raises the job count for
+recipes that ask for it:
+
+```sh
+retrolunar generate -x --cores 8 'python@aarch64-android24'
+```
+
+The generated script opens with `export CORES=1`; with `--cores 8` it
+opens with `export CORES=8`. Recipes read `$CORES` and decide for
+themselves — most still build one job at a time, because a log you can
+read is worth more than the wall-clock.
+
 `install` is the same thing without the options: it only ever prints to
 stdout. Useful for piping.
 
@@ -244,6 +256,16 @@ return recipe({
         make install
     ]]
 })
+```
+
+Build bodies get `$CORES`, `$PREFIX`, `$OUT` and friends as environment.
+Honouring `$CORES` is optional and off by default:
+
+```lua
+    build = [[
+        make -j"$CORES"
+        make install
+    ]]
 ```
 
 One `pack` resolves to at most one file: the exact system first, then the

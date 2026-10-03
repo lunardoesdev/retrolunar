@@ -361,7 +361,12 @@ do
   local function sh_sq(s)
     return "'" .. tostring(s):gsub("'", "'\\''") .. "'"
   end
-  function require_script(nestdir, pkgdir)
+  function require_script(nestdir, pkgdir, cores)
+    -- Job count for recipes that want it. Defaults to 1: the whole design
+    -- assumes serial builds, and a recipe that fanned out on its own was
+    -- a bug. --cores is the sanctioned way to opt in to more.
+    local n = tonumber(cores)
+    if type(n) ~= 'number' or n < 1 or n ~= math.floor(n) then n = 1 end
     local function abspath(p)
       if p:sub(1, 1) == '/' then return p end
       local h = io.popen('pwd')
@@ -389,6 +394,7 @@ do
     local out = { '#!/bin/sh\nset -eu\n' }
     out[#out + 1] = 'NESTDIR=' .. sh_sq(nestdir) .. '\n'
     out[#out + 1] = 'PACKAGEDIR=' .. sh_sq(pkgdir) .. '\n'
+    out[#out + 1] = 'export CORES=' .. string.format('%d', n) .. '\n'
     out[#out + 1] = 'mkdir -p "$NESTDIR"\n'
     out[#out + 1] = 'if ! command -v flock >/dev/null 2>&1; then\n'
     out[#out + 1] = '  echo "retrolunar: flock is required (install util-linux)" >&2\n'

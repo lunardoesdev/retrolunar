@@ -151,7 +151,7 @@ static int resolve_targets(lua_State *L, int argc, char **argv, int first) {
 
 /* Emit the build script for the queued targets. Caller frees. */
 static char *build_script(lua_State *L, const char *nest, const char *pkgs,
-                          size_t *out_len) {
+                          int cores, size_t *out_len) {
   lua_getglobal(L, "require_script");
   if (!lua_isfunction(L, -1)) {
     fprintf(stderr, "require_script not ready\n");
@@ -160,7 +160,8 @@ static char *build_script(lua_State *L, const char *nest, const char *pkgs,
   /* Pass nest/packages dirs as header assignments, not baked paths. */
   lua_pushstring(L, nest);
   lua_pushstring(L, pkgs);
-  if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+  lua_pushinteger(L, cores);
+  if (lua_pcall(L, 3, 1, 0) != LUA_OK) {
     fprintf(stderr, "%s\n", lua_tostring(L, -1));
     return NULL;
   }
@@ -182,7 +183,7 @@ static char *build_script(lua_State *L, const char *nest, const char *pkgs,
 
 static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
   const char *nest = NULL;
-  int first = -1;
+  int cores = 1, first = -1;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--nest") == 0) {
       if (++i >= argc) goto usage;
@@ -190,6 +191,15 @@ static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
     } else if (strcmp(argv[i], "--packages") == 0) {
       /* Already resolved and passed in; skip the flag and its value. */
       if (++i >= argc) goto usage;
+    } else if (strcmp(argv[i], "--cores") == 0) {
+      if (++i >= argc) goto usage;
+      char *end = NULL;
+      long v = strtol(argv[i], &end, 10);
+      if (end == argv[i] || *end != '\0' || v < 1 || v > 1024) {
+        fprintf(stderr, "install: --cores wants a number from 1 to 1024\n");
+        goto usage;
+      }
+      cores = (int)v;
     } else if (first < 0) {
       first = i;
     }
@@ -202,7 +212,7 @@ static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
   if (status != LUA_OK)
     return status;
   size_t len = 0;
-  char *script = build_script(L, nest, pkgs, &len);
+  char *script = build_script(L, nest, pkgs, cores, &len);
   if (script == NULL)
     return LUA_ERRRUN;
   if (len > 0 && fwrite(script, 1, len, stdout) != len) {
@@ -217,12 +227,12 @@ usage:
   return LUA_ERRERR;
 }
 
-/* generate [-o FILE] [-x] <pack[@sys]>... — same script install emits,
- * with somewhere to put it and the option to run it. */
+/* generate [-o FILE] [-x] [--cores N] <pack[@sys]>... — same script
+ * install emits, with somewhere to put it and the option to run it. */
 static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
   const char *nest = NULL;
   const char *output = NULL;
-  int execute = 0, first = -1;
+  int execute = 0, cores = 1, first = -1;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--nest") == 0) {
       if (++i >= argc) goto usage;
@@ -232,6 +242,15 @@ static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
     } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
       if (++i >= argc) goto usage;
       output = argv[i];
+    } else if (strcmp(argv[i], "--cores") == 0) {
+      if (++i >= argc) goto usage;
+      char *end = NULL;
+      long v = strtol(argv[i], &end, 10);
+      if (end == argv[i] || *end != '\0' || v < 1 || v > 1024) {
+        fprintf(stderr, "generate: --cores wants a number from 1 to 1024\n");
+        goto usage;
+      }
+      cores = (int)v;
     } else if (strcmp(argv[i], "-x") == 0 || strcmp(argv[i], "--execute") == 0) {
       execute = 1;
     } else if (argv[i][0] == '-' && argv[i][1] != '\0') {
@@ -249,7 +268,7 @@ static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
   if (status != LUA_OK)
     return status;
   size_t len = 0;
-  char *script = build_script(L, nest, pkgs, &len);
+  char *script = build_script(L, nest, pkgs, cores, &len);
   if (script == NULL)
     return LUA_ERRRUN;
 
@@ -519,6 +538,8 @@ static void usage(FILE *out, const char *prog) {
     "  --packages DIR   packages tree to resolve recipes from;\n"
     "                   defaults to $HOME/.cache/retrolunar/packages, cloned\n"
     "                   from %s on first use and refreshed on later runs\n"
+    "  --cores N        job count for recipes that honour $CORES;\n"
+    "                   defaults to 1 (install, generate)\n"
     "  -h, --help       show this help and exit\n",
     prog, prog, prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog,
     prog, prog, prog, prog, PACKAGES_REPO);

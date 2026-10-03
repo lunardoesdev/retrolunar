@@ -258,6 +258,14 @@ Rules:
   `cmake --build build --parallel 1`. `make -j1` was once rejected as a
   correctness requirement across five packages, and the resulting
   "fixes" were edits to correct recipes for no reason.)
+  The one sanctioned way to use more than one job is `$CORES`: the
+  generated script exports it (`export CORES=1` by default, or whatever
+  `--cores N` was given), and a recipe may pass it through — `make
+  -j"$CORES"`, `cmake --build build --parallel "$CORES"`. A recipe that
+  hardcodes a number, or counts the machine itself with `nproc`, is still
+  a defect: `$CORES` is what keeps the default serial and makes a
+  parallel build a deliberate choice by the caller. A bare `make` stays
+  fine — it is `$CORES`-agnostic and serial either way.
   Rewriting a *generated* artifact the build itself just produced, under
   `$OUT`, is not patching an upstream source and is allowed: use `awk`
   plus `cp`, never `sed -i`. That line is where upstream inputs end and
