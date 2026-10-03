@@ -28,6 +28,16 @@ and recipe-local workarounds. Avoid cryptic flags, shell tricks, hidden
 behavior, and vendored or locally applied patches; recipes must not patch
 upstream sources.
 
+## Repository boundary
+
+Never read from or write to anything outside this repository's directory.
+No scratch files, probes, downloads, logs, workspaces, lock files or build
+output in `/tmp`, `~`, or any sibling directory unless the user has said so
+for that specific case. Everything a task produces lives inside the repo —
+use `nest/.tmp` (or `builddir/`) instead, and delete it when you are done. Do
+not read outside the repo to check what another copy of the tree contains; the
+working copy is the truth.
+
 ## Layout
 
 - `packages/<name>/source.lua` — fetch recipe: downloads and unpacks
@@ -602,8 +612,9 @@ a `generic.lua` (pngprobe does).
 
 ### Checking a claim is not building the package
 
-The reviewer may compile a throwaway probe against the NDK compilers under
-`/tmp` to settle a factual claim about a header or a macro — is
+The reviewer may compile a throwaway probe against the NDK compilers in a
+scratch directory inside this repository to settle a factual claim about a
+header or a macro — is
 `<asm/unistd.h>` really unavailable, is `PTRACE_POKEUSR` a real macro. That
 is checking a fact, not building the package, and it is how claims get
 overturned: a forecast that merely repeats the adder's unverified assertion
@@ -662,11 +673,13 @@ ANDROID_HOME=/path/to/sdk sh build.sh # NDK systems need this
 - Several package additions may run at once against one `./nest`. The
   nest's own lock is fail-fast, so a second build would abort rather than
   queue: take a shared mutex around each package's generate-and-run
-  sequence, `flock ~/ond/git/rl-build.lock sh -c '...'`. Take it per
+  sequence, `flock ./rl-build.lock sh -c '...'` (the lock file lives in the
+  repo root, next to the shared `./nest` it guards). Take it per
   package, not per batch: a batch-wide lock makes the whole batch queue
   behind one slow build instead of interleaving. See 'The package pipeline'
   for the shared-nest rules. Agents editing packages need separate jj
-  working copies (`jj workspace add`) as siblings of this repo, so their
+  working copies (`jj workspace add` into a directory inside this repo, e.g.
+  `work/w1`), so their
   commits never race.
 - When asked to update package(s), update exactly the requested scope. Check
   each package's latest stable upstream release, then update its version,
