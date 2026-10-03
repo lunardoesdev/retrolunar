@@ -30,6 +30,69 @@ alone inherits the compile-time default system (`DEFAULT_SYSTEM`,
 target system. Dependencies resolve automatically — asking for `python`
 also builds `readline`, `termcap`, and their sources first.
 
+## Installing retrolunar
+
+`meson setup` records the install prefix, so the prefix is fixed at setup
+time and `meson install` just uses it. Build first — `meson install`
+refuses to run in an unbuilt build dir.
+
+### To `~/.local/bin` (per user, no root)
+
+```sh
+meson setup builddir --prefix "$HOME/.local"     # ~/.local/bin/retrolunar
+ninja -C builddir
+meson install -C builddir
+```
+
+Make sure `~/.local/bin` is on your `PATH`:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+To move an existing build dir to a different prefix later, reconfigure
+with `meson configure builddir --prefix "$HOME/.local"`, then
+`ninja -C builddir && meson install -C builddir`. The binary lands in
+`<prefix>/bin/retrolunar` and a static `liblua.a` in `<prefix>/lib/`.
+
+### To the system (`/usr/local`, needs root)
+
+```sh
+sudo meson setup builddir-system --prefix /usr/local
+sudo ninja -C builddir-system
+sudo meson install -C builddir-system
+```
+
+That installs `/usr/local/bin/retrolunar`, which is on `PATH` on most
+distributions. If `sudo` is not available or you prefer to see what a
+root step does, stage the install with `--destdir` and inspect it first:
+
+```sh
+meson install -C builddir --destdir "$PWD/stage"
+find stage -type f          # stage/usr/local/bin/retrolunar, stage/usr/local/lib/liblua.a
+sudo cp -a stage/usr/local/. /usr/local/
+rm -rf stage
+```
+
+`retrolunar` is self-contained — it links its embedded Lua statically,
+so the installed binary has no runtime dependency on the repo. It still
+needs a `packages/` tree to install software from, passed with
+`--packages`; that directory is separate from the install prefix.
+
+### Uninstall
+
+```sh
+# per-user, prefix $HOME/.local
+rm ~/.local/bin/retrolunar ~/.local/lib/liblua.a
+
+# or, for a /usr/local install
+sudo rm /usr/local/bin/retrolunar /usr/local/lib/liblua.a
+```
+
+Uninstalling removes those two installed files. It does not touch any
+nest you built with `--nest`; delete the nest directory yourself if you
+want the prefixes gone.
+
 ## Where things go after building
 
 Everything lives under `--nest` (here `./nest`, gitignored):
