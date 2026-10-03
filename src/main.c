@@ -105,10 +105,75 @@ usage:
   return LUA_ERRERR;
 }
 
+/* deps --packages DIR <pack[@sys]>... — resolve the same queue install
+ * would build, and print it instead of emitting a build script. Queue
+ * order is dependency order: leaves first, requested packages last. */
+static int do_deps(lua_State *L, int argc, char **argv) {
+  const char *pkgs = NULL;
+  int first = -1;
+  for (int i = 2; i < argc; i++) {
+    if (strcmp(argv[i], "--packages") == 0) {
+      if (++i >= argc) goto usage;
+      pkgs = argv[i];
+    } else if (first < 0) {
+      first = i;
+    }
+  }
+  if (pkgs == NULL || first < 0)
+    goto usage;
+  lua_pushstring(L, pkgs);
+  lua_setglobal(L, "RETROLUNAR_PKGS_BOOT");
+  lua_getglobal(L, "require");
+  if (!lua_isfunction(L, -1)) {
+    fprintf(stderr, "deps: loader not ready\n");
+    return LUA_ERRERR;
+  }
+  for (int i = first; i < argc; i++) {
+    lua_pushvalue(L, -1);
+    lua_pushstring(L, argv[i]);
+    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+      fprintf(stderr, "%s\n", lua_tostring(L, -1));
+      return LUA_ERRRUN;
+    }
+    lua_pop(L, 1);
+  }
+  lua_pop(L, 1);
+  lua_getglobal(L, "require_queue");
+  if (!lua_isfunction(L, -1)) {
+    fprintf(stderr, "deps: require_queue not ready\n");
+    return LUA_ERRERR;
+  }
+  if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+    fprintf(stderr, "%s\n", lua_tostring(L, -1));
+    return LUA_ERRRUN;
+  }
+  /* require_queue returns an array snapshot; walk it by index. Each entry
+   * is a recipe table carrying name, sys, and version when set. */
+  lua_Integer n = luaL_len(L, -1);
+  for (lua_Integer i = 1; i <= n; i++) {
+    lua_geti(L, -1, i);
+    lua_getfield(L, -1, "name");
+    lua_getfield(L, -2, "sys");
+    lua_getfield(L, -3, "version");
+    int have_ver = lua_isstring(L, -1);
+    printf("%s@%s%s%s\n",
+           lua_isstring(L, -3) ? lua_tostring(L, -3) : "?",
+           lua_isstring(L, -2) ? lua_tostring(L, -2) : "?",
+           have_ver ? " " : "", have_ver ? lua_tostring(L, -1) : "");
+    lua_pop(L, 4); /* version, sys, name, entry */
+  }
+  lua_pop(L, 1); /* queue table */
+  return ferror(stdout) ? LUA_ERRFILE : LUA_OK;
+usage:
+  usage(stderr, argv[0]);
+  return LUA_ERRERR;
+}
+
 static void usage(FILE *out, const char *prog) {
   fprintf(out,
     "usage: %s [script | -e chunk]\n"
     "       %s install [--nest DIR] --packages DIR <pack[@sys]...>\n"
+    "       %s deps --packages DIR <pack[@sys]...>\n"
     "       %s --help\n"
     "\n"
     "Commands:\n"
@@ -117,12 +182,17 @@ static void usage(FILE *out, const char *prog) {
     "            'pack' uses the compile-time default system (DEFAULT_SYSTEM,\n"
     "            %s by default); '@native' is an alias for that same system.\n"
     "            Dependencies resolve automatically and are emitted first.\n"
+    "  deps      print each <pack[@sys]> target and all of its dependencies\n"
+    "            in dependency order (leaves first), then exit. Resolves the\n"
+    "            same queue 'install' would build but writes no script and\n"
+    "            touches no nest: no downloads, no builds, no stamps.\n"
     "  -e chunk  run a Lua chunk.\n"
     "  script    run a Lua file.\n"
     "\n"
     "Example:\n"
     "  git clone https://github.com/lunardoesdev/retrolunar-packages\n"
     "  %s install --packages ./retrolunar-packages 'python@aarch64-android24'\n"
+    "  %s deps --packages ./retrolunar-packages 'python@aarch64-android24'\n"
     "  # --nest defaults to $HOME/.cache/retrolunar/nestdir\n"
     "\n"
     "With no arguments, print this help.\n"
@@ -132,7 +202,7 @@ static void usage(FILE *out, const char *prog) {
     "                   defaults to $HOME/.cache/retrolunar/nestdir\n"
     "  --packages DIR   packages tree to resolve recipes from\n"
     "  -h, --help       show this help and exit\n",
-    prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog);
+    prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog, prog);
 }
 
 int main(int argc, char **argv) {
@@ -169,6 +239,8 @@ int main(int argc, char **argv) {
   int status;
   if (argc >= 2 && strcmp(argv[1], "install") == 0)
     status = do_install(L, argc, argv);
+  else if (argc >= 2 && strcmp(argv[1], "deps") == 0)
+    status = do_deps(L, argc, argv);
   else if (argc == 3 && strcmp(argv[1], "-e") == 0)
     status = run_chunk(L, luaL_loadstring(L, argv[2]));
   else if (argc == 2)

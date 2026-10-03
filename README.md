@@ -50,6 +50,31 @@ them somewhere specific, as the CI example below does. If `HOME` is unset
 and you omit `--nest`, `install` prints the usage message instead of
 guessing a location.
 
+## Listing dependencies
+
+`deps` resolves the same queue `install` would build and prints it, one
+`name@sys` per line, in dependency order — leaves first, the packages you
+asked for last:
+
+```sh
+retrolunar deps --packages ./retrolunar-packages 'python@aarch64-android24'
+```
+
+```
+termcap@aarch64-android24
+readline@aarch64-android24 8.2
+python@aarch64-android24 3.14.7
+```
+
+The version is printed when the recipe set one. It resolves recipes and
+prints the result, nothing more: no script is written, no tarball is
+downloaded, nothing is compiled, and the nest is neither read nor created.
+`--nest` does not apply to `deps`. An unknown target fails with the
+module error and exit 1, as `install` does.
+
+It takes the same `pack[@sys]` targets as `install`, including bare names
+and the `@native` alias, and several at once.
+
 ## Installing retrolunar
 
 `meson setup` records the install prefix, so the prefix is fixed at setup
