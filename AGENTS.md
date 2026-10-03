@@ -1,7 +1,20 @@
 # AGENTS.md — retrolunar package manager
 
 This file is for coding agents working in this repo. It describes how the
-package manager works and how to add or fix packages and systems.
+package manager binary and the generated build script work, and it records
+the package and system authoring rules (now maintained elsewhere — see the
+note below).
+
+> **Package trees now live in another repository.** The package-side
+> material kept in this file below — 'Layout' (the `packages/` entries),
+> 'Writing a source recipe', 'Writing a build recipe', 'The package pipeline'
+> and its subsections, and the package-specific parts of 'Workflow' — is
+> retained here for reference only. Its owner and its authoritative copy are
+> that other repository; if the two disagree, that repository wins. Where
+> this file still says to write or edit a recipe, read that as a description
+> of the rules, not as an instruction to create the file here. Do not go
+> looking for the other repository, and do not guess its location — the user
+> will say where when it matters.
 
 ## What this is
 
