@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -20,6 +21,10 @@
 #define PACKAGES_REPO "https://github.com/lunardoesdev/retrolunar-packages"
 
 extern const char *loader_lua;
+
+/* Set by `generate -x` when the generated script exits non-zero, so main
+ * can hand the script's own status back instead of collapsing it to 1. */
+static int script_exit_status = 0;
 
 static int run_chunk(lua_State *L, int status) {
   if (status == LUA_OK)
@@ -123,6 +128,58 @@ static const char *resolve_packages(const char *given) {
   return dir;
 }
 
+/* Require every target on the command line, in order. Shared by install
+ * and generate: they differ only in what they do with the script. */
+static int resolve_targets(lua_State *L, int argc, char **argv, int first) {
+  lua_getglobal(L, "require");
+  if (!lua_isfunction(L, -1)) {
+    fprintf(stderr, "loader not ready\n");
+    return LUA_ERRERR;
+  }
+  for (int i = first; i < argc; i++) {
+    lua_pushvalue(L, -1);
+    lua_pushstring(L, argv[i]);
+    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+      fprintf(stderr, "%s\n", lua_tostring(L, -1));
+      return LUA_ERRRUN;
+    }
+    lua_pop(L, 1);
+  }
+  lua_pop(L, 1);
+  return LUA_OK;
+}
+
+/* Emit the build script for the queued targets. Caller frees. */
+static char *build_script(lua_State *L, const char *nest, const char *pkgs,
+                          size_t *out_len) {
+  lua_getglobal(L, "require_script");
+  if (!lua_isfunction(L, -1)) {
+    fprintf(stderr, "require_script not ready\n");
+    return NULL;
+  }
+  /* Pass nest/packages dirs as header assignments, not baked paths. */
+  lua_pushstring(L, nest);
+  lua_pushstring(L, pkgs);
+  if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
+    fprintf(stderr, "%s\n", lua_tostring(L, -1));
+    return NULL;
+  }
+  size_t len = 0;
+  const char *s = lua_tolstring(L, -1, &len);
+  char *copy = NULL;
+  if (s != NULL && len > 0) {
+    copy = malloc(len);
+    if (copy == NULL) {
+      fprintf(stderr, "out of memory\n");
+      return NULL;
+    }
+    memcpy(copy, s, len);
+  }
+  lua_pop(L, 1);
+  *out_len = len;
+  return copy;
+}
+
 static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
   const char *nest = NULL;
   int first = -1;
@@ -141,41 +198,140 @@ static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
     nest = default_nest();
   if (nest == NULL || first < 0)
     goto usage;
-  lua_getglobal(L, "require");
-  if (!lua_isfunction(L, -1)) {
-    fprintf(stderr, "install: loader not ready\n");
-    return LUA_ERRERR;
-  }
-  for (int i = first; i < argc; i++) {
-    lua_pushvalue(L, -1);
-    lua_pushstring(L, argv[i]);
-    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-      fprintf(stderr, "%s\n", lua_tostring(L, -1));
-      return LUA_ERRRUN;
-    }
-    lua_pop(L, 1);
-  }
-  lua_pop(L, 1);
-  lua_getglobal(L, "require_script");
-  if (!lua_isfunction(L, -1)) {
-    fprintf(stderr, "install: require_script not ready\n");
-    return LUA_ERRERR;
-  }
-  /* Pass nest/packages dirs as header assignments, not baked paths. */
-  lua_pushstring(L, nest);
-  lua_pushstring(L, pkgs);
-  if (lua_pcall(L, 2, 1, 0) != LUA_OK) {
-    fprintf(stderr, "%s\n", lua_tostring(L, -1));
+  int status = resolve_targets(L, argc, argv, first);
+  if (status != LUA_OK)
+    return status;
+  size_t len = 0;
+  char *script = build_script(L, nest, pkgs, &len);
+  if (script == NULL)
     return LUA_ERRRUN;
+  if (len > 0 && fwrite(script, 1, len, stdout) != len) {
+    fprintf(stderr, "install: write failed\n");
+    free(script);
+    return LUA_ERRFILE;
   }
-  {
-    size_t len = 0;
-    const char *s = lua_tolstring(L, -1, &len);
-    if (len > 0 && fwrite(s, 1, len, stdout) != len) {
-      fprintf(stderr, "install: write failed\n");
+  free(script);
+  return LUA_OK;
+usage:
+  usage(stderr, argv[0]);
+  return LUA_ERRERR;
+}
+
+/* generate [-o FILE] [-x] <pack[@sys]>... — same script install emits,
+ * with somewhere to put it and the option to run it. */
+static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
+  const char *nest = NULL;
+  const char *output = NULL;
+  int execute = 0, first = -1;
+  for (int i = 2; i < argc; i++) {
+    if (strcmp(argv[i], "--nest") == 0) {
+      if (++i >= argc) goto usage;
+      nest = argv[i];
+    } else if (strcmp(argv[i], "--packages") == 0) {
+      if (++i >= argc) goto usage;
+    } else if (strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) {
+      if (++i >= argc) goto usage;
+      output = argv[i];
+    } else if (strcmp(argv[i], "-x") == 0 || strcmp(argv[i], "--execute") == 0) {
+      execute = 1;
+    } else if (argv[i][0] == '-' && argv[i][1] != '\0') {
+      fprintf(stderr, "generate: unknown option '%s'\n", argv[i]);
+      goto usage;
+    } else if (first < 0) {
+      first = i;
+    }
+  }
+  if (nest == NULL)
+    nest = default_nest();
+  if (nest == NULL || first < 0)
+    goto usage;
+  int status = resolve_targets(L, argc, argv, first);
+  if (status != LUA_OK)
+    return status;
+  size_t len = 0;
+  char *script = build_script(L, nest, pkgs, &len);
+  if (script == NULL)
+    return LUA_ERRRUN;
+
+  const char *where = output != NULL ? output : "-";
+  if (output == NULL && !execute) {
+    if (len > 0 && fwrite(script, 1, len, stdout) != len) {
+      fprintf(stderr, "generate: write to stdout failed\n");
+      free(script);
       return LUA_ERRFILE;
     }
+    free(script);
+    return LUA_OK;
   }
+
+  /* With -o the script becomes a real, executable file; without it the
+   * script is piped straight into sh, so nothing is left behind. */
+  if (output != NULL) {
+    FILE *f = fopen(output, "wb");
+    if (f == NULL) {
+      fprintf(stderr, "generate: cannot write %s\n", output);
+      free(script);
+      return LUA_ERRFILE;
+    }
+    if (len > 0 && fwrite(script, 1, len, f) != len) {
+      fprintf(stderr, "generate: short write to %s\n", output);
+      fclose(f);
+      free(script);
+      return LUA_ERRFILE;
+    }
+    if (fclose(f) != 0) {
+      fprintf(stderr, "generate: cannot close %s\n", output);
+      free(script);
+      return LUA_ERRFILE;
+    }
+    /* chmod rather than fchmodat dance: the file is ours, and 0755 is
+     * what makes ./build.sh runnable. */
+    if (chmod(output, 0755) != 0)
+      fprintf(stderr, "generate: warning: cannot chmod +x %s\n", output);
+    fprintf(stderr, "generate: wrote %s\n", where);
+  }
+
+  if (execute) {
+    char cmd[PATH_MAX];
+    if (output != NULL)
+      snprintf(cmd, sizeof cmd, "exec sh '%s'", output);
+    else
+      snprintf(cmd, sizeof cmd, "exec sh");
+    int rc;
+    if (output != NULL) {
+      rc = system(cmd);
+    } else {
+      FILE *p = popen(cmd, "w");
+      if (p == NULL) {
+        fprintf(stderr, "generate: cannot run sh\n");
+        free(script);
+        return LUA_ERRRUN;
+      }
+      if (len > 0 && fwrite(script, 1, len, p) != len) {
+        fprintf(stderr, "generate: cannot pipe script to sh\n");
+        pclose(p);
+        free(script);
+        return LUA_ERRFILE;
+      }
+      rc = pclose(p);
+    }
+    free(script);
+    if (rc == -1) {
+      fprintf(stderr, "generate: cannot run sh\n");
+      return LUA_ERRRUN;
+    }
+    /* Propagate the script's exit status: a failed build must not look
+     * like a successful generate, and `generate -x` should be a drop-in
+     * for `sh build.sh`, status included. */
+    if (WIFEXITED(rc)) {
+      if (WEXITSTATUS(rc) == 0)
+        return LUA_OK;
+      script_exit_status = WEXITSTATUS(rc);
+      return LUA_ERRRUN;
+    }
+    return LUA_ERRRUN;
+  }
+  free(script);
   return LUA_OK;
 usage:
   usage(stderr, argv[0]);
@@ -318,6 +474,7 @@ static void usage(FILE *out, const char *prog) {
     "       %s install [--nest DIR] --packages DIR <pack[@sys]...>\n"
     "       %s deps --packages DIR <pack[@sys]...>\n"
     "       %s search [--packages DIR] QUERY\n"
+    "       %s generate [-o FILE] [-x] [--nest DIR] <pack[@sys]>...\n"
     "       %s --help\n"
     "\n"
     "Commands:\n"
@@ -326,6 +483,11 @@ static void usage(FILE *out, const char *prog) {
     "            'pack' uses the compile-time default system (DEFAULT_SYSTEM,\n"
     "            %s by default); '@native' is an alias for that same system.\n"
     "            Dependencies resolve automatically and are emitted first.\n"
+    "  generate  same script 'install' prints, but with somewhere to put it:\n"
+    "            -o FILE writes the script there and makes it executable\n"
+    "            (mode 0755); without -o it goes to stdout. -x runs the\n"
+    "            script with sh straight after generating it and exits with\n"
+    "            the script's own status, so -x alone is a one-step build.\n"
     "  deps      print each <pack[@sys]> target and all of its dependencies\n"
     "            in dependency order (leaves first), then exit. Resolves the\n"
     "            same queue 'install' would build but writes no script and\n"
@@ -340,6 +502,7 @@ static void usage(FILE *out, const char *prog) {
     "Example:\n"
     "  %s deps 'python@aarch64-android24'\n"
     "  %s install 'python@aarch64-android24' > build.sh\n"
+    "  %s generate -o build.sh -x 'python@aarch64-android24'\n"
     "\n"
     "  # --nest defaults to $HOME/.cache/retrolunar/nestdir\n"
     "\n"
@@ -357,8 +520,8 @@ static void usage(FILE *out, const char *prog) {
     "                   defaults to $HOME/.cache/retrolunar/packages, cloned\n"
     "                   from %s on first use and refreshed on later runs\n"
     "  -h, --help       show this help and exit\n",
-    prog, prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog, prog,
-    prog, prog, PACKAGES_REPO);
+    prog, prog, prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog,
+    prog, prog, prog, prog, PACKAGES_REPO);
 }
 
 int main(int argc, char **argv) {
@@ -386,6 +549,7 @@ int main(int argc, char **argv) {
   const char *pkgs_boot = NULL;
   if (argc >= 2 && (strcmp(argv[1], "install") == 0 ||
                     strcmp(argv[1], "deps") == 0 ||
+                    strcmp(argv[1], "generate") == 0 ||
                     strcmp(argv[1], "search") == 0)) {
     /* Require at least one target before touching the network: a plain
      * `deps` with no package should not clone the tree just to then fail
@@ -423,6 +587,8 @@ int main(int argc, char **argv) {
   int status;
   if (argc >= 2 && strcmp(argv[1], "install") == 0)
     status = do_install(L, argc, argv, pkgs_boot);
+  else if (argc >= 2 && strcmp(argv[1], "generate") == 0)
+    status = do_generate(L, argc, argv, pkgs_boot);
   else if (argc >= 2 && strcmp(argv[1], "deps") == 0)
     status = do_deps(L, argc, argv);
   else if (argc >= 2 && strcmp(argv[1], "search") == 0)
@@ -437,5 +603,7 @@ int main(int argc, char **argv) {
   }
 
   lua_close(L);
-  return status != LUA_OK;
+  if (status == LUA_OK)
+    return 0;
+  return script_exit_status != 0 ? script_exit_status : 1;
 }

@@ -31,14 +31,16 @@ keep somewhere else, as the CI example below does.
 meson setup builddir && ninja -C builddir retrolunar
 
 # 2. Generate the build script for what you want.
-./builddir/retrolunar install 'python@aarch64-android24' > build.sh
+./builddir/retrolunar generate -o build.sh 'python@aarch64-android24'
 
 #    --nest defaults to $HOME/.cache/retrolunar/nestdir
 
 # 3. Check it, then run it.
 sh -n build.sh
 ANDROID_HOME=/path/to/android-sdk sh build.sh
-```
+
+#    or skip steps 3 and 4 and let retrolunar run it:
+./builddir/retrolunar generate -x 'python@aarch64-android24'
 
 The `install` arguments are one or more `pack[@sys]` targets: `pack`
 alone inherits the compile-time default system (`DEFAULT_SYSTEM`,
@@ -46,6 +48,29 @@ alone inherits the compile-time default system (`DEFAULT_SYSTEM`,
 `pack@native` spelling aliases that default—it does not name a separate
 target system. Dependencies resolve automatically — asking for `python`
 also builds `readline`, `termcap`, and their sources first.
+
+`generate` is `install` with somewhere to put the script:
+
+- `-o FILE` writes the script to `FILE` and makes it executable (mode
+  `0755`). Without `-o` the script goes to stdout, byte for byte what
+  `install` prints.
+- `-x` runs the generated script with `sh` immediately after writing it,
+  and exits with the script's own exit status — so `generate -x` is a
+  one-step build, and a failing recipe still fails the command. With `-o`
+  it runs the file; without one it pipes the script into `sh` and leaves
+  nothing behind.
+
+Both can be combined, which is the common case: `generate -o build.sh -x`
+leaves a script you can inspect, re-run or commit, and still builds now.
+`install` remains the plain "print the script" spelling, for pipelines
+and for `sh -n` gating.
+
+```console
+$ retrolunar generate -o build.sh -x 'python@aarch64-android24'
+generate: wrote build.sh
+-- Installing: .../include/python3.14/pyconfig.h
+...
+```
 
 `--nest` is optional. Without it, prefixes land in
 `$HOME/.cache/retrolunar/nestdir`, which keeps them out of the source
@@ -235,11 +260,9 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
-          ./builddir/retrolunar install \
+          ./builddir/retrolunar generate -o build.sh -x \
             --nest ./nest --packages ./retrolunar-packages \
-            'python@aarch64-android24' > build.sh
-          sh -n build.sh
-          sh build.sh
+            'python@aarch64-android24'
       - name: Check artifacts
         run: |
           test -x nest/aarch64-android24/bin/python3
@@ -258,7 +281,9 @@ Notes for CI:
 - Cache `./nest/source` (tarballs + git clones) between runs — it makes
   rebuilds incremental; the freshness stamps skip everything already
   built. Do **not** cache `./nest/tmp`.
-- `sh -n build.sh` first: rejects a broken generated script before the
+- With `generate -o build.sh -x` the script is kept for the logs and
+  re-runs. Drop `-x` if you would rather gate it yourself with
+  `sh -n build.sh` — that rejects a broken generated script before the
   hour-long build starts.
 - `ANDROID_HOME` must point at an SDK containing an NDK; the system
   `setup` picks the newest `ndk/*` automatically.
