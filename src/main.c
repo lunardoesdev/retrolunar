@@ -242,11 +242,82 @@ usage:
   return LUA_ERRERR;
 }
 
+/* search [--packages DIR] QUERY — list packages and systems in the
+ * packages tree whose name contains QUERY (case-insensitive). An empty
+ * QUERY lists everything. */
+static int do_search(lua_State *L, int argc, char **argv) {
+  const char *query = NULL;
+  for (int i = 2; i < argc; i++) {
+    if (strcmp(argv[i], "--packages") == 0) {
+      if (++i >= argc) goto usage;
+    } else if (query == NULL) {
+      query = argv[i];
+    } else {
+      goto usage;
+    }
+  }
+  if (query == NULL)
+    goto usage;
+  lua_getglobal(L, "search_packages");
+  if (!lua_isfunction(L, -1)) {
+    fprintf(stderr, "search: search_packages not ready\n");
+    return LUA_ERRERR;
+  }
+  lua_pushstring(L, query);
+  if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+    fprintf(stderr, "%s\n", lua_tostring(L, -1));
+    return LUA_ERRRUN;
+  }
+  /* Rows are name<TAB>kind<TAB>recipes, preformatted by the loader. */
+  lua_Integer n = luaL_len(L, -1);
+  for (lua_Integer i = 1; i <= n; i++) {
+    lua_geti(L, -1, i);
+    const char *row = lua_tostring(L, -1);
+    if (row == NULL)
+      continue;
+    char name[256];
+    char kind[32];
+    char recipes[512];
+    recipes[0] = '\0';
+    const char *a = strchr(row, '\t');
+    if (a == NULL)
+      continue;
+    size_t nlen = (size_t)(a - row);
+    if (nlen >= sizeof name)
+      continue;
+    memcpy(name, row, nlen);
+    name[nlen] = '\0';
+    const char *b = strchr(a + 1, '\t');
+    size_t klen = b ? (size_t)(b - a - 1) : strlen(a + 1);
+    if (klen >= sizeof kind)
+      continue;
+    memcpy(kind, a + 1, klen);
+    kind[klen] = '\0';
+    if (b != NULL)
+      snprintf(recipes, sizeof recipes, "%s", b + 1);
+    /* Systems have no recipe column; don't leave its padding behind. */
+    size_t rlen = strlen(recipes);
+    while (rlen > 0 && (recipes[rlen - 1] == ' ' || recipes[rlen - 1] == ','))
+      recipes[--rlen] = '\0';
+    if (recipes[0] != '\0')
+      printf("%-24s %-8s %s\n", name, kind, recipes);
+    else
+      printf("%-24s %s\n", name, kind);
+    lua_pop(L, 1);
+  }
+  lua_pop(L, 1); /* rows table */
+  return ferror(stdout) ? LUA_ERRFILE : LUA_OK;
+usage:
+  usage(stderr, argv[0]);
+  return LUA_ERRERR;
+}
+
 static void usage(FILE *out, const char *prog) {
   fprintf(out,
     "usage: %s [script | -e chunk]\n"
     "       %s install [--nest DIR] --packages DIR <pack[@sys]...>\n"
     "       %s deps --packages DIR <pack[@sys]...>\n"
+    "       %s search [--packages DIR] QUERY\n"
     "       %s --help\n"
     "\n"
     "Commands:\n"
@@ -259,6 +330,10 @@ static void usage(FILE *out, const char *prog) {
     "            in dependency order (leaves first), then exit. Resolves the\n"
     "            same queue 'install' would build but writes no script and\n"
     "            touches no nest: no downloads, no builds, no stamps.\n"
+    "  search    list packages and systems in the packages tree whose name\n"
+    "            contains QUERY, case-insensitively, one per line as\n"
+    "            'name kind recipes'. An empty QUERY lists everything. Reads\n"
+    "            the tree only: no recipes are run, nothing is built.\n"
     "  -e chunk  run a Lua chunk.\n"
     "  script    run a Lua file.\n"
     "\n"
@@ -271,6 +346,7 @@ static void usage(FILE *out, const char *prog) {
     "  # for a packages tree of your own:\n"
     "  git clone https://github.com/lunardoesdev/retrolunar-packages\n"
     "  %s deps --packages ./retrolunar-packages 'python@aarch64-android24'\n"
+    "  %s search python\n"
     "\n"
     "With no arguments, print this help.\n"
     "\n"
@@ -281,8 +357,8 @@ static void usage(FILE *out, const char *prog) {
     "                   defaults to $HOME/.cache/retrolunar/packages, cloned\n"
     "                   from %s on first use and refreshed on later runs\n"
     "  -h, --help       show this help and exit\n",
-    prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog, prog, prog,
-    PACKAGES_REPO);
+    prog, prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog, prog,
+    prog, prog, PACKAGES_REPO);
 }
 
 int main(int argc, char **argv) {
@@ -309,10 +385,11 @@ int main(int argc, char **argv) {
    * global set afterwards would not change where recipes are looked up. */
   const char *pkgs_boot = NULL;
   if (argc >= 2 && (strcmp(argv[1], "install") == 0 ||
-                    strcmp(argv[1], "deps") == 0)) {
+                    strcmp(argv[1], "deps") == 0 ||
+                    strcmp(argv[1], "search") == 0)) {
     /* Require at least one target before touching the network: a plain
      * `deps` with no package should not clone the tree just to then fail
-     * on the usage message. */
+     * on the usage message. `search` takes a query in that slot. */
     int targets = 0, bad = 0;
     pkgs_boot = NULL;
     for (int i = 2; i < argc; i++) {
@@ -325,7 +402,7 @@ int main(int argc, char **argv) {
         targets++;
       }
     }
-    if (bad || targets == 0) {
+    if (bad || (targets == 0 && strcmp(argv[1], "search") != 0)) {
       usage(stderr, argv[0]);
       lua_close(L);
       return 1;
@@ -348,6 +425,8 @@ int main(int argc, char **argv) {
     status = do_install(L, argc, argv, pkgs_boot);
   else if (argc >= 2 && strcmp(argv[1], "deps") == 0)
     status = do_deps(L, argc, argv);
+  else if (argc >= 2 && strcmp(argv[1], "search") == 0)
+    status = do_search(L, argc, argv);
   else if (argc == 3 && strcmp(argv[1], "-e") == 0)
     status = run_chunk(L, luaL_loadstring(L, argv[2]));
   else if (argc == 2)

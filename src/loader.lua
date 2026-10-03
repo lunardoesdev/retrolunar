@@ -291,6 +291,70 @@ do
     for i, t in ipairs(queue) do snap[i] = t end
     return snap
   end
+
+  -- search: list packages and systems in the packages roots whose name
+  -- contains the query, case-insensitively. Returns preformatted lines.
+  -- Lua has no readdir, so this shells out; pcall-guarded so a host with
+  -- no `ls` yields an empty result instead of an error.
+  local function list_dir(path)
+    local ok, h = pcall(io.popen, 'ls -1 ' .. string.format('%q', path) .. ' 2>/dev/null')
+    if not ok or type(h) ~= 'userdata' then return {} end
+    local names = {}
+    for line in h:lines() do
+      if line ~= '' then names[#names + 1] = line end
+    end
+    h:close()
+    return names
+  end
+
+  local function read_all(path)
+    local fh = io.open(path, 'r')
+    if fh == nil then return nil end
+    local s = fh:read('a')
+    fh:close()
+    return s
+  end
+
+  function search_packages(query)
+    local q = string.lower(tostring(query or ''))
+    local seen, out = {}, {}
+    for _, root in ipairs(roots()) do
+      for _, name in ipairs(list_dir(root)) do
+        local path = root .. '/' .. name
+        -- Only direct children that hold recipes; skip stray files.
+        if not seen[name] and name:sub(1, 1) ~= '.' and
+           (read_all(path .. '/generic.lua') or read_all(path .. '/source.lua')) then
+          seen[name] = true
+          if q == '' or string.find(string.lower(name), q, 1, true) then
+            -- A system is a directory whose generic.lua calls system().
+            local body = read_all(path .. '/generic.lua')
+            local is_sys = type(body) == 'string' and
+                           body:find('system%s*%(%s*{') ~= nil
+            local kind, recipes
+            if is_sys then
+              kind = 'system'
+              recipes = nil
+            else
+              kind = 'package'
+              recipes = {}
+              if body then recipes[#recipes + 1] = 'generic' end
+              if read_all(path .. '/source.lua') then recipes[#recipes + 1] = 'source' end
+              for _, extra in ipairs(list_dir(path)) do
+                if extra:sub(-4) == '.lua' and extra ~= 'generic.lua' and
+                   extra ~= 'source.lua' and extra ~= 'init.lua' then
+                  recipes[#recipes + 1] = extra:gsub('%.lua$', '')
+                end
+              end
+            end
+            out[#out + 1] = name .. '\t' .. kind .. '\t' ..
+                             (recipes and table.concat(recipes, ', ') or '')
+          end
+        end
+      end
+    end
+    return out
+  end
+
   -- Emit the idempotent POSIX sh install script for the current queue.
   -- Uses $NESTDIR/$RECIPEDIR/$PACKAGEDIR at script runtime; OUT/WORK are
   -- per-package shell locals. Env values come from entry.system.env.

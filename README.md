@@ -81,6 +81,43 @@ error and exit 1, as `install` does.
 It takes the same `pack[@sys]` targets as `install`, including bare names
 and the `@native` alias, and several at once.
 
+## Searching the packages tree
+
+`search` lists packages and systems whose name contains the query,
+case-insensitively:
+
+```sh
+retrolunar search png
+```
+
+```
+libpng                   package  generic, source
+pngprobe                 package  generic
+```
+
+Systems are reported as `system`, packages as `package` followed by the
+recipe files they ship — `generic` (the system-neutral fallback), `source`
+(the fetch recipe) and any per-system recipe such as `android`:
+
+```sh
+retrolunar search bc
+```
+
+```
+bc                       package  generic, source, android
+```
+
+An empty query lists everything:
+
+```sh
+retrolunar search ''
+```
+
+Like `deps`, it reads the tree only — no recipe is run, nothing is compiled,
+and the nest is not touched. It does run the packages bootstrap,
+so the first `search` on a machine without a packages tree clones one.
+`search` with no query at all is a usage error.
+
 ## Installing retrolunar
 
 `meson setup` records the install prefix, so the prefix is fixed at setup
