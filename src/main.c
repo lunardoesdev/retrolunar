@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -9,6 +8,8 @@
 #ifndef RETROLUNAR_DEFAULT_SYSTEM
 #define RETROLUNAR_DEFAULT_SYSTEM "clang-native"
 #endif
+
+/* Bare `retrolunar` prints usage on stdout and exits 0; there is no REPL. */
 
 extern const char *loader_lua;
 
@@ -22,28 +23,10 @@ static int run_chunk(lua_State *L, int status) {
   return status;
 }
 
-static int repl(lua_State *L) {
-  char line[4096];
-  int status = LUA_OK;
-  int tty = isatty(STDIN_FILENO);
-  for (;;) {
-    if (tty) {
-      fputs("> ", stdout);
-      fflush(stdout);
-    }
-    if (!fgets(line, sizeof line, stdin))
-      break;
-    if (line[0] == '\n')
-      continue;
-    status = run_chunk(L, luaL_loadstring(L, line));
-  }
-  if (tty)
-    putchar('\n');
-  return status;
-}
-
 /* install --nest DIR --packages DIR <pack[@sys]...> — print the POSIX sh
  * install script for the queued recipes to stdout. */
+static void usage(FILE *out, const char *prog);
+
 static int do_install(lua_State *L, int argc, char **argv) {
   const char *nest = NULL;
   const char *pkgs = NULL;
@@ -100,13 +83,45 @@ static int do_install(lua_State *L, int argc, char **argv) {
   }
   return LUA_OK;
 usage:
-  fprintf(stderr,
-    "usage: %s install --nest DIR --packages DIR <pack[@sys]...>\n",
-    argv[0]);
+  usage(stderr, argv[0]);
   return LUA_ERRERR;
 }
 
+static void usage(FILE *out, const char *prog) {
+  fprintf(out,
+    "usage: %s [script | -e chunk]\n"
+    "       %s install --nest DIR --packages DIR <pack[@sys]...>\n"
+    "       %s --help\n"
+    "\n"
+    "Commands:\n"
+    "  install   print a POSIX sh script that builds the queued recipes for\n"
+    "            <pack[@sys]> targets into per-system prefixes under --nest.\n"
+    "            'pack' uses the compile-time default system (DEFAULT_SYSTEM,\n"
+    "            %s by default); '@native' is an alias for that same system.\n"
+    "            Dependencies resolve automatically and are emitted first.\n"
+    "  -e chunk  run a Lua chunk.\n"
+    "  script    run a Lua file.\n"
+    "\n"
+    "With no arguments, read Lua from stdin as a REPL.\n"
+    "\n"
+    "Options:\n"
+    "  --nest DIR       output root for per-system prefixes (install)\n"
+    "  --packages DIR   packages tree to resolve recipes from\n"
+    "  -h, --help       show this help and exit\n",
+    prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM);
+}
+
 int main(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+      usage(stdout, argv[0]);
+      return 0;
+    }
+  }
+  if (argc < 2) {
+    usage(stdout, argv[0]);
+    return 0;
+  }
   lua_State *L = luaL_newstate();
   if (!L) {
     fprintf(stderr, "out of memory\n");
@@ -130,14 +145,12 @@ int main(int argc, char **argv) {
   int status;
   if (argc >= 2 && strcmp(argv[1], "install") == 0)
     status = do_install(L, argc, argv);
-  else if (argc < 2)
-    status = repl(L);
   else if (argc == 3 && strcmp(argv[1], "-e") == 0)
     status = run_chunk(L, luaL_loadstring(L, argv[2]));
   else if (argc == 2)
     status = run_chunk(L, luaL_loadfile(L, argv[1]));
   else {
-    fprintf(stderr, "usage: %s [script | -e chunk]\n", argv[0]);
+    usage(stderr, argv[0]);
     status = LUA_ERRERR;
   }
 
