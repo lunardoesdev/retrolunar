@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -27,6 +29,20 @@ static int run_chunk(lua_State *L, int status) {
  * install script for the queued recipes to stdout. */
 static void usage(FILE *out, const char *prog);
 
+/* Fallback nest root when --nest is omitted: $HOME/.cache/retrolunar/nestdir.
+ * Returns NULL when HOME is unset, which sends the caller to the usage
+ * message rather than guessing a location. */
+static const char *default_nest(void) {
+  const char *home = getenv("HOME");
+  if (home == NULL || home[0] == '\0')
+    return NULL;
+  static char buf[PATH_MAX];
+  if (snprintf(buf, sizeof buf, "%s/.cache/retrolunar/nestdir", home) >=
+      (int)sizeof buf)
+    return NULL;
+  return buf;
+}
+
 static int do_install(lua_State *L, int argc, char **argv) {
   const char *nest = NULL;
   const char *pkgs = NULL;
@@ -42,6 +58,8 @@ static int do_install(lua_State *L, int argc, char **argv) {
       first = i;
     }
   }
+  if (nest == NULL)
+    nest = default_nest();
   if (nest == NULL || pkgs == NULL || first < 0)
     goto usage;
   lua_pushstring(L, pkgs);
@@ -90,7 +108,7 @@ usage:
 static void usage(FILE *out, const char *prog) {
   fprintf(out,
     "usage: %s [script | -e chunk]\n"
-    "       %s install --nest DIR --packages DIR <pack[@sys]...>\n"
+    "       %s install [--nest DIR] --packages DIR <pack[@sys]...>\n"
     "       %s --help\n"
     "\n"
     "Commands:\n"
@@ -104,12 +122,14 @@ static void usage(FILE *out, const char *prog) {
     "\n"
     "Example:\n"
     "  git clone https://github.com/lunardoesdev/retrolunar-packages\n"
-    "  %s install --nest ./nest --packages ./retrolunar-packages 'python@aarch64-android24'\n"
+    "  %s install --packages ./retrolunar-packages 'python@aarch64-android24'\n"
+    "  # --nest defaults to $HOME/.cache/retrolunar/nestdir\n"
     "\n"
     "With no arguments, print this help.\n"
     "\n"
     "Options:\n"
-    "  --nest DIR       output root for per-system prefixes (install)\n"
+    "  --nest DIR       output root for per-system prefixes (install);\n"
+    "                   defaults to $HOME/.cache/retrolunar/nestdir\n"
     "  --packages DIR   packages tree to resolve recipes from\n"
     "  -h, --help       show this help and exit\n",
     prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog);

@@ -25,8 +25,11 @@ the example below.
 meson setup builddir && ninja -C builddir retrolunar
 
 # 2. Generate the build script for what you want.
-./builddir/retrolunar install --nest ./nest \
+./builddir/retrolunar install \
   --packages ./retrolunar-packages 'python@aarch64-android24' > build.sh
+
+  # --nest is optional; it defaults to
+  #   $HOME/.cache/retrolunar/nestdir
 
 # 3. Check it, then run it.
 sh -n build.sh
@@ -39,6 +42,13 @@ alone inherits the compile-time default system (`DEFAULT_SYSTEM`,
 `pack@native` spelling aliases that default—it does not name a separate
 target system. Dependencies resolve automatically — asking for `python`
 also builds `readline`, `termcap`, and their sources first.
+
+`--nest` is optional. Without it, prefixes land in
+`$HOME/.cache/retrolunar/nestdir`, which keeps them out of the source
+tree and lets successive builds share one cache. Pass `--nest DIR` to put
+them somewhere specific, as the CI example below does. If `HOME` is unset
+and you omit `--nest`, `install` prints the usage message instead of
+guessing a location.
 
 ## Installing retrolunar
 
@@ -106,7 +116,8 @@ want the prefixes gone.
 
 ## Where things go after building
 
-Everything lives under `--nest` (here `./nest`, gitignored):
+Everything lives under `--nest` (`./nest` in the CI example below, the
+default `$HOME/.cache/retrolunar/nestdir` otherwise):
 
 - `./nest/<sys>/` — the usable prefix for a system: `bin/`, `lib/`,
   `include/`, `lib/pkgconfig/`. **This is what you consume.**
