@@ -197,6 +197,19 @@ skip zlib@aarch64-android24 (fresh)
 ...
 ```
 
+When the script finishes, it tells you where it put everything:
+
+```console
+$ retrolunar generate -x 'pngprobe@aarch64-android24'
+...
+
+retrolunar: installed under: /home/you/.cache/retrolunar/nestdir
+retrolunar:   aarch64-android24: /home/you/.cache/retrolunar/nestdir/aarch64-android24
+```
+
+One line per system that actually got written to. It only prints when
+stdout is a terminal, so piping a build into a log stays clean.
+
 A stamp is newer than its recipe, its system file and its system dir, so
 editing any of those rebuilds just what's affected. To force one package,
 delete its stamp:

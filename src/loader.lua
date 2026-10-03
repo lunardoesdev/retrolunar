@@ -550,6 +550,28 @@ do
       out[#out + 1] = '  trap - EXIT\n'
       out[#out + 1] = 'fi\n'
     end
+    -- After the last block: say where the results ended up. Cheap, and
+    -- it saves hunting through the log for a path.
+    local touched = {}
+    for _, e in ipairs(queue) do
+      -- 'source' is a pseudo-system: it stages tarballs, not a prefix
+      -- anyone links against, so it stays out of the summary.
+      if type(e.sys) == 'string' and e.sys ~= '' and e.sys ~= 'source' then
+        touched[e.sys] = true
+      end
+    end
+    local syslist = {}
+    for s in pairs(touched) do syslist[#syslist + 1] = s end
+    table.sort(syslist)
+    out[#out + 1] = '\nif [ -t 1 ]; then\n'
+    out[#out + 1] = '  echo\n'
+    out[#out + 1] = '  echo "retrolunar: installed under: $NESTDIR"\n'
+    for _, s in ipairs(syslist) do
+      out[#out + 1] = '  if [ -d "$NESTDIR/' .. s .. '" ]; then\n'
+      out[#out + 1] = '    echo "retrolunar:   ' .. s .. ': $NESTDIR/' .. s .. '"\n'
+      out[#out + 1] = '  fi\n'
+    end
+    out[#out + 1] = 'fi\n'
     return table.concat(out)
   end
 end
