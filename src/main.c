@@ -128,17 +128,19 @@ static const char *resolve_packages(const char *given) {
   return dir;
 }
 
-/* Require every target on the command line, in order. Shared by install
- * and generate: they differ only in what they do with the script. */
-static int resolve_targets(lua_State *L, int argc, char **argv, int first) {
+/* Require every target, in order. Takes the list the option parser built,
+ * not argv: argv still holds the flags, and re-walking it from the first
+ * target meant an option written after a target was treated as a package
+ * name ('module "--cores" not found'). */
+static int resolve_targets(lua_State *L, char **targets, int n) {
   lua_getglobal(L, "require");
   if (!lua_isfunction(L, -1)) {
     fprintf(stderr, "loader not ready\n");
     return LUA_ERRERR;
   }
-  for (int i = first; i < argc; i++) {
+  for (int i = 0; i < n; i++) {
     lua_pushvalue(L, -1);
-    lua_pushstring(L, argv[i]);
+    lua_pushstring(L, targets[i]);
     if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
       fprintf(stderr, "%s\n", lua_tostring(L, -1));
       return LUA_ERRRUN;
@@ -183,7 +185,10 @@ static char *build_script(lua_State *L, const char *nest, const char *pkgs,
 
 static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
   const char *nest = NULL;
-  int cores = 1, first = -1;
+  char **targets = malloc(sizeof(char *) * (size_t)argc);
+  int ntargets = 0, cores = 1;
+  if (targets == NULL)
+    return LUA_ERRERR;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--nest") == 0) {
       if (++i >= argc) goto usage;
@@ -200,15 +205,19 @@ static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
         goto usage;
       }
       cores = (int)v;
-    } else if (first < 0) {
-      first = i;
+    } else if (argv[i][0] == '-' && argv[i][1] != '\0') {
+      fprintf(stderr, "install: unknown option '%s'\n", argv[i]);
+      goto usage;
+    } else {
+      targets[ntargets++] = argv[i];
     }
   }
   if (nest == NULL)
     nest = default_nest();
-  if (nest == NULL || first < 0)
+  if (ntargets == 0)
     goto usage;
-  int status = resolve_targets(L, argc, argv, first);
+  int status = resolve_targets(L, targets, ntargets);
+  free(targets);
   if (status != LUA_OK)
     return status;
   size_t len = 0;
@@ -224,6 +233,7 @@ static int do_install(lua_State *L, int argc, char **argv, const char *pkgs) {
   return LUA_OK;
 usage:
   usage(stderr, argv[0]);
+  free(targets);
   return LUA_ERRERR;
 }
 
@@ -232,7 +242,10 @@ usage:
 static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
   const char *nest = NULL;
   const char *output = NULL;
-  int execute = 0, cores = 1, first = -1;
+  char **targets = malloc(sizeof(char *) * (size_t)argc);
+  int ntargets = 0, execute = 0, cores = 1;
+  if (targets == NULL)
+    return LUA_ERRERR;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--nest") == 0) {
       if (++i >= argc) goto usage;
@@ -256,15 +269,16 @@ static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
     } else if (argv[i][0] == '-' && argv[i][1] != '\0') {
       fprintf(stderr, "generate: unknown option '%s'\n", argv[i]);
       goto usage;
-    } else if (first < 0) {
-      first = i;
+    } else {
+      targets[ntargets++] = argv[i];
     }
   }
   if (nest == NULL)
     nest = default_nest();
-  if (nest == NULL || first < 0)
+  if (ntargets == 0)
     goto usage;
-  int status = resolve_targets(L, argc, argv, first);
+  int status = resolve_targets(L, targets, ntargets);
+  free(targets);
   if (status != LUA_OK)
     return status;
   size_t len = 0;
@@ -354,6 +368,7 @@ static int do_generate(lua_State *L, int argc, char **argv, const char *pkgs) {
   return LUA_OK;
 usage:
   usage(stderr, argv[0]);
+  free(targets);
   return LUA_ERRERR;
 }
 
@@ -361,31 +376,26 @@ usage:
  * would build, and print it instead of emitting a build script. Queue
  * order is dependency order: leaves first, requested packages last. */
 static int do_deps(lua_State *L, int argc, char **argv) {
-  int first = -1;
+  char **targets = malloc(sizeof(char *) * (size_t)argc);
+  int ntargets = 0;
+  if (targets == NULL)
+    return LUA_ERRERR;
   for (int i = 2; i < argc; i++) {
     if (strcmp(argv[i], "--packages") == 0) {
       if (++i >= argc) goto usage;
-    } else if (first < 0) {
-      first = i;
+    } else if (argv[i][0] == '-' && argv[i][1] != '\0') {
+      fprintf(stderr, "deps: unknown option '%s'\n", argv[i]);
+      goto usage;
+    } else {
+      targets[ntargets++] = argv[i];
     }
   }
-  if (first < 0)
+  if (ntargets == 0)
     goto usage;
-  lua_getglobal(L, "require");
-  if (!lua_isfunction(L, -1)) {
-    fprintf(stderr, "deps: loader not ready\n");
-    return LUA_ERRERR;
-  }
-  for (int i = first; i < argc; i++) {
-    lua_pushvalue(L, -1);
-    lua_pushstring(L, argv[i]);
-    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
-      fprintf(stderr, "%s\n", lua_tostring(L, -1));
-      return LUA_ERRRUN;
-    }
-    lua_pop(L, 1);
-  }
-  lua_pop(L, 1);
+  int status = resolve_targets(L, targets, ntargets);
+  free(targets);
+  if (status != LUA_OK)
+    return status;
   lua_getglobal(L, "require_queue");
   if (!lua_isfunction(L, -1)) {
     fprintf(stderr, "deps: require_queue not ready\n");
@@ -414,6 +424,7 @@ static int do_deps(lua_State *L, int argc, char **argv) {
   return ferror(stdout) ? LUA_ERRFILE : LUA_OK;
 usage:
   usage(stderr, argv[0]);
+  free(targets);
   return LUA_ERRERR;
 }
 
@@ -544,6 +555,25 @@ static void usage(FILE *out, const char *prog) {
     prog, prog, prog, prog, prog, prog, RETROLUNAR_DEFAULT_SYSTEM, prog,
     prog, prog, prog, prog, PACKAGES_REPO);
 }
+/* Flag names, listed once. main()'s pre-scan and each subcommand's parser
+ * must agree on which flags swallow the next argv entry: when they
+ * disagreed, a flag's value was counted as a package name, so the run
+ * cloned the packages tree for a command that was about to print usage,
+ * or failed resolving a module named "--cores". */
+static const char *const VALUE_FLAGS[] = {
+  "--packages", "--nest", "-o", "--output", "--cores", NULL
+};
+static const char *const BOOL_FLAGS[] = {
+  "-x", "--execute", "-h", "--help", NULL
+};
+static int in_list(const char *const *list, const char *s) {
+  for (int i = 0; list[i] != NULL; i++)
+    if (strcmp(s, list[i]) == 0)
+      return 1;
+  return 0;
+}
+static int takes_value(const char *s) { return in_list(VALUE_FLAGS, s); }
+static int is_bool_flag(const char *s) { return in_list(BOOL_FLAGS, s); }
 
 int main(int argc, char **argv) {
   for (int i = 1; i < argc; i++) {
@@ -578,12 +608,15 @@ int main(int argc, char **argv) {
     int targets = 0, bad = 0;
     pkgs_boot = NULL;
     for (int i = 2; i < argc; i++) {
-      if (strcmp(argv[i], "--packages") == 0) {
-        if (++i >= argc) { bad = 1; break; }
-        pkgs_boot = argv[i];
-      } else if (strcmp(argv[i], "--nest") == 0) {
-        if (++i >= argc) { bad = 1; break; }
+      if (takes_value(argv[i])) {
+        if (i + 1 >= argc) { bad = 1; break; }
+        if (strcmp(argv[i], "--packages") == 0) pkgs_boot = argv[++i];
+        else i++;
+      } else if (is_bool_flag(argv[i])) {
+        /* no value to skip */
       } else {
+        /* An unknown flag is left to the subcommand to name precisely;
+         * swallowing it here would replace that message with bare usage. */
         targets++;
       }
     }
