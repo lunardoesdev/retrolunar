@@ -1,302 +1,337 @@
 # retrolunar
 
-A tiny package manager: a C binary with an embedded Lua 5.5 interpreter
-that prints POSIX shell scripts which build Unix software — natively or
-cross-compiled for Android — into isolated per-system prefixes.
+A small package manager. It's one C binary with Lua 5.5 baked in, and
+what it actually does is print shell scripts — ordinary `sh` scripts that
+build Unix software for your machine or for Android, into a prefix per
+system. Nothing clever at build time, no daemon, no dependency solver
+running in the background. You get a script, you can read it, you can edit
+it, you can throw it away and generate it again.
 
-## Quick start
-
-Prerequisites: `meson`, `ninja`, a C compiler, `curl`, `git`, `sh`, and
-`flock` from util-linux.
-For Android targets: an Android SDK with an NDK (`ANDROID_HOME`).
-
-`--packages` points at a packages tree; it is optional. Left out, the tree
-is taken from `$HOME/.cache/retrolunar/packages`, cloned from
-<https://github.com/lunardoesdev/retrolunar-packages> on first use and
-refreshed with `git pull --ff-only` afterwards:
+## Build it
 
 ```sh
-retrolunar deps 'python@aarch64-android24'   # clones the tree, then lists
+meson setup builddir
+ninja -C builddir
 ```
 
-A failed refresh is ignored — a tree that is already there is good enough
-to resolve against, so an offline run still works. A tree that cannot be
-obtained at all (no `HOME`, clone failed, directory left empty by an
-interrupted clone) is an error: `retrolunar` says so and exits 1 rather
-than resolving against nothing. Pass `--packages DIR` to use a tree you
-keep somewhere else, as the CI example below does.
+You need `meson`, `ninja`, a C compiler, and `python3`. At runtime:
+`sh`, `curl`, `git`, and `flock` (from util-linux). For Android targets,
+an SDK with an NDK in `ANDROID_HOME`.
+
+Install it into `~/.local/bin` when you'd rather not have `./builddir/` in
+front of every command:
 
 ```sh
-# 1. Build retrolunar itself.
-meson setup builddir && ninja -C builddir retrolunar
+meson setup builddir --prefix "$HOME/.local"
+ninja -C builddir && meson install -C builddir
+export PATH="$HOME/.local/bin:$PATH"
+```
 
-# 2. Generate the build script for what you want.
-./builddir/retrolunar generate -o build.sh 'python@aarch64-android24'
+Or system-wide, same thing with a different prefix and `sudo`:
 
-#    --nest defaults to $HOME/.cache/retrolunar/nestdir
+```sh
+sudo meson setup builddir --prefix /usr/local
+sudo ninja -C builddir && sudo meson install -C builddir
+```
 
-# 3. Check it, then run it.
-sh -n build.sh
-ANDROID_HOME=/path/to/android-sdk sh build.sh
+That puts `retrolunar` in `/usr/local/bin` plus a `liblua.a` that nothing
+else needs. The binary is self-contained, so it doesn't care that the repo
+moved or vanished. To undo it, delete those two files.
 
-#    or skip steps 3 and 4 and let retrolunar run it:
-./builddir/retrolunar generate -x 'python@aarch64-android24'
+## Your first build
 
-The `install` arguments are one or more `pack[@sys]` targets: `pack`
-alone inherits the compile-time default system (`DEFAULT_SYSTEM`,
-`clang-native` by default); `pack@sys` pins a system. The magic
-`pack@native` spelling aliases that default—it does not name a separate
-target system. Dependencies resolve automatically — asking for `python`
-also builds `readline`, `termcap`, and their sources first.
+```sh
+retrolunar generate -x 'pngprobe@aarch64-android24'
+```
 
-`generate` is `install` with somewhere to put the script:
+That's the whole thing. First run clones a packages tree into
+`~/.cache/retrolunar/packages` (and refreshes it later with `git pull`),
+resolves the recipes, writes a build script, runs it, and hands you back
+an Android prefix.
 
-- `-o FILE` writes the script to `FILE` and makes it executable (mode
-  `0755`). Without `-o` the script goes to stdout, byte for byte what
-  `install` prints.
-- `-x` runs the generated script with `sh` immediately after writing it,
-  and exits with the script's own exit status — so `generate -x` is a
-  one-step build, and a failing recipe still fails the command. With `-o`
-  it runs the file; without one it pipes the script into `sh` and leaves
-  nothing behind.
+No packages tree on hand? Point `--packages` at one you keep yourself:
 
-Both can be combined, which is the common case: `generate -o build.sh -x`
-leaves a script you can inspect, re-run or commit, and still builds now.
-`install` remains the plain "print the script" spelling, for pipelines
-and for `sh -n` gating.
+```sh
+git clone https://github.com/lunardoesdev/retrolunar-packages
+retrolunar generate --packages ./retrolunar-packages -x 'pngprobe@aarch64-android24'
+```
+
+## The four commands
+
+### generate — write the build script
+
+`generate` is the one you'll use most. It resolves your targets and emits
+a POSIX `sh` script.
+
+```sh
+retrolunar generate 'python@aarch64-android24' > build.sh   # to stdout
+retrolunar generate -o build.sh 'python@aarch64-android24'    # to a file, chmod +x
+retrolunar generate -x 'python@aarch64-android24'            # and run it
+retrolunar generate -o build.sh -x 'python@aarch64-android24'
+```
+
+`-o FILE` writes the script and makes it executable, so you can look at it,
+keep it, run it again next week. `-x` runs it with `sh` straight away and
+exits with whatever the script exited with — if a recipe fails, so does
+the command, which is what you want in a script or a CI job.
+
+`install` is the same thing without the options: it only ever prints to
+stdout. Useful for piping.
+
+### deps — just tell me what it would build
 
 ```console
-$ retrolunar generate -o build.sh -x 'python@aarch64-android24'
-generate: wrote build.sh
--- Installing: .../include/python3.14/pyconfig.h
-...
+$ retrolunar deps 'pngprobe@aarch64-android24'
+zlib@source 1.3.1
+zlib@aarch64-android24
+libpng@source 1.6.48
+libpng@aarch64-android24
+freetype@source 2.13.3
+freetype@aarch64-android24
+pngprobe@aarch64-android24 0.1.0
 ```
 
-`--nest` is optional. Without it, prefixes land in
-`$HOME/.cache/retrolunar/nestdir`, which keeps them out of the source
-tree and lets successive builds share one cache. Pass `--nest DIR` to put
-them somewhere specific, as the CI example below does. If `HOME` is unset
-and you omit `--nest`, `install` prints the usage message instead of
-guessing a location.
+Dependencies first, what you asked for last, version when the recipe
+pins one. Nothing is downloaded, compiled, or written. Fast way to answer
+"why is this taking so long".
 
-## Listing dependencies
+### search — what's in the tree
 
-`deps` resolves the same queue `install` would build and prints it, one
-`name@sys` per line, in dependency order — leaves first, the packages you
-asked for last:
-
-```sh
-retrolunar deps 'python@aarch64-android24'
-```
-
-```
-termcap@aarch64-android24
-readline@aarch64-android24 8.2
-python@aarch64-android24 3.14.7
-```
-
-The version is printed when the recipe set one. It prints the result and
-nothing more: no build script is written, no tarball is downloaded,
-nothing is compiled, and the nest is neither read nor created. What it
-does do is the packages bootstrap described under Quick start, so the
-first `deps` on a machine without a packages tree clones one.
-`--nest` does not apply to `deps`. An unknown target fails with the module
-error and exit 1, as `install` does.
-
-It takes the same `pack[@sys]` targets as `install`, including bare names
-and the `@native` alias, and several at once.
-
-## Searching the packages tree
-
-`search` lists packages and systems whose name contains the query,
-case-insensitively:
-
-```sh
-retrolunar search png
-```
-
-```
+```console
+$ retrolunar search png
 libpng                   package  generic, source
 pngprobe                 package  generic
 ```
 
-Systems are reported as `system`, packages as `package` followed by the
-recipe files they ship — `generic` (the system-neutral fallback), `source`
-(the fetch recipe) and any per-system recipe such as `android`:
+Case-insensitive substring. `system` means a toolchain definition;
+`package` lists the recipe files it ships — `generic` is the
+system-neutral fallback, `source` fetches the tarball, `android` and
+friends override per system.
 
-```sh
-retrolunar search bc
-```
-
-```
+```console
+$ retrolunar search bc
 bc                       package  generic, source, android
 ```
 
-An empty query lists everything:
+`retrolunar search ''` lists the whole tree.
+
+### install — print the script
 
 ```sh
-retrolunar search ''
+retrolunar install 'python@aarch64-android24' > build.sh
+sh -n build.sh && sh build.sh
 ```
 
-Like `deps`, it reads the tree only — no recipe is run, nothing is compiled,
-and the nest is not touched. It does run the packages bootstrap,
-so the first `search` on a machine without a packages tree clones one.
-`search` with no query at all is a usage error.
+### About targets
 
-## Installing retrolunar
-
-`meson setup` records the install prefix, so the prefix is fixed at setup
-time and `meson install` just uses it. Build first — `meson install`
-refuses to run in an unbuilt build dir.
-
-### To `~/.local/bin` (per user, no root)
+Every command takes `pack` or `pack@sys`:
 
 ```sh
-meson setup builddir --prefix "$HOME/.local"     # ~/.local/bin/retrolunar
-ninja -C builddir
-meson install -C builddir
+retrolunar generate -x zlib                 # default system: clang-native
+retrolunar generate -x 'zlib@aarch64-android24'
+retrolunar generate -x 'zlib@x86_64-mingw'
 ```
 
-Make sure `~/.local/bin` is on your `PATH`:
+A bare name means the compile-time default system (`clang-native`, unless
+you change it at build time). `@native` is another way of spelling that
+same default. Dependencies come along automatically; you never list them.
+
+If you name a system that doesn't exist, you find out immediately:
+
+```console
+$ retrolunar deps 'zlib@sdfkjsdlkf'
+system 'sdfkjsdlkf' not found (needed by 'zlib'): module 'sdfkjsdlkf@generic' not found
+$ echo $?
+1
+```
+
+## Where output lands
+
+Two paths, both optional:
+
+- `--packages DIR` — the packages tree. Defaults to
+  `~/.cache/retrolunar/packages`, cloned on first use.
+- `--nest DIR` — where prefixes are built. Defaults to
+  `~/.cache/retrolunar/nestdir`, so builds don't scatter into your source
+  tree and the next run can reuse them.
+
+Point them wherever you like. CI usually wants `--nest ./nest` so the
+prefix is in the workspace.
+
+Inside a nest:
+
+```
+nest/
+  aarch64-android24/      the usable prefix — this is what you consume
+    bin/ lib/ include/ lib/pkgconfig/
+  source/                 unpacked upstream tarballs, kept between runs
+  tmp/                    per-package scratch, cleaned up after each build
+  .retrolunar.lock        held for the duration of a build
+```
+
+The prefix is a normal prefix. Headers, static libs, `.pc` files, tools:
 
 ```sh
-export PATH="$HOME/.local/bin:$PATH"
+nest/aarch64-android24/bin/python3
+
+CC=aarch64-linux-android24-clang \
+CFLAGS="-I$PWD/nest/aarch64-android24/include" \
+LDFLAGS="-L$PWD/nest/aarch64-android24/lib" \
+  cc -o mine mine.c
+
+PKG_CONFIG_LIBDIR="$PWD/nest/aarch64-android24/lib/pkgconfig" \
+  pkg-config --libs --cflags libcurl
 ```
 
-To move an existing build dir to a different prefix later, reconfigure
-with `meson configure builddir --prefix "$HOME/.local"`, then
-`ninja -C builddir && meson install -C builddir`. The binary lands in
-`<prefix>/bin/retrolunar` and a static `liblua.a` in `<prefix>/lib/`.
+## It's incremental
 
-### To the system (`/usr/local`, needs root)
+Every package gets a stamp. Run the same command again and finished work
+is skipped:
+
+```console
+$ retrolunar generate -x 'pngprobe@aarch64-android24'
+...
+$ retrolunar generate -x 'pngprobe@aarch64-android24'
+skip zlib@source (fresh)
+skip zlib@aarch64-android24 (fresh)
+...
+```
+
+A stamp is newer than its recipe, its system file and its system dir, so
+editing any of those rebuilds just what's affected. To force one package,
+delete its stamp:
 
 ```sh
-sudo meson setup builddir-system --prefix /usr/local
-sudo ninja -C builddir-system
-sudo meson install -C builddir-system
+rm nest/aarch64-android24/.retrolunar-zlib
 ```
 
-That installs `/usr/local/bin/retrolunar`, which is on `PATH` on most
-distributions. If `sudo` is not available or you prefer to see what a
-root step does, stage the install with `--destdir` and inspect it first:
+Two builds can't share a nest. The second one to start fails immediately
+rather than waiting — the lock is held for the whole run and released by
+the kernel even if the build is killed.
+
+## Recipes
+
+Recipes are Lua files, and a package is a directory:
+
+```
+packages/zlib/
+  source.lua      fetch and unpack upstream
+  generic.lua     build it
+  android.lua     optional: only for Android
+```
+
+```lua
+-- generic.lua
+require("libpng@source")
+
+return recipe({
+    build = [[
+        ./configure --prefix="$OUT"
+        make
+        make install
+    ]]
+})
+```
+
+One `pack` resolves to at most one file: the exact system first, then the
+system's `recipe_fallbacks` in order, then `generic.lua`. That's why one
+`android.lua` covers every Android target.
+
+[AGENTS.md](AGENTS.md) has the full guide — the loader's `require`
+forms, the freshness rules, what recipes are and aren't allowed to do, and
+the platform walls worth knowing before you try to build something.
+
+## Scripts
+
+Because the output is just `sh`, wrapping it is easy.
+
+### Build and use a toolchain
 
 ```sh
-meson install -C builddir --destdir "$PWD/stage"
-find stage -type f          # stage/usr/local/bin/retrolunar, stage/usr/local/lib/liblua.a
-sudo cp -a stage/usr/local/. /usr/local/
-rm -rf stage
+#!/bin/sh
+# build-deps.sh — produce an Android prefix other jobs can consume
+set -eu
+
+: "${ANDROID_HOME:?set ANDROID_HOME to an SDK with an NDK}"
+SYS=aarch64-android24
+NEST="$PWD/nest"
+
+retrolunar generate -o "build-$SYS.sh" -x --nest "$NEST" "python@$SYS"
+
+PREFIX="$NEST/$SYS"
+test -x "$PREFIX/bin/python3"
+PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" pkg-config --modversion readline
+
+echo "prefix ready: $PREFIX"
 ```
 
-`retrolunar` is self-contained — it links its embedded Lua statically,
-so the installed binary has no runtime dependency on the repo. It does
-need `git` and network access on first run, to clone the packages tree
-into `$HOME/.cache/retrolunar/packages` (see Quick start); that cache is
-separate from the install prefix and is not touched by uninstalling.
-
-### Uninstall
+### Keep the cache, throw away the rest
 
 ```sh
-# per-user, prefix $HOME/.local
-rm ~/.local/bin/retrolunar ~/.local/lib/liblua.a
-
-# or, for a /usr/local install
-sudo rm /usr/local/bin/retrolunar /usr/local/lib/liblua.a
+# source/ holds downloaded tarballs; tmp/ never survives a run.
+cache: nest/source
 ```
 
-Uninstalling removes those two installed files. It does not touch any
-nest you built with `--nest`; delete the nest directory yourself if you
-want the prefixes gone.
-
-## Where things go after building
-
-Everything lives under `--nest` (`./nest` in the CI example below, the
-default `$HOME/.cache/retrolunar/nestdir` otherwise):
-
-- `./nest/<sys>/` — the usable prefix for a system: `bin/`, `lib/`,
-  `include/`, `lib/pkgconfig/`. **This is what you consume.**
-  Point your builds at it:
-  - `./nest/aarch64-android24/bin/python3`
-  - `CC=aarch64-linux-android24-clang CFLAGS=-I./nest/aarch64-android24/include LDFLAGS=-L./nest/aarch64-android24/lib`
-  - `PKG_CONFIG_LIBDIR=./nest/aarch64-android24/lib/pkgconfig pkg-config --libs libcurl`
-- `./nest/source/<name>/` — unpacked upstream sources per package.
-  Useful for debugging build failures (the real `configure` logs and
-  Makefiles live in `./nest/tmp/work-*/` while a build runs, but those
-  are removed on success).
-- `./nest/<sys>/.retrolunar-<name>` — freshness stamps. Re-running the
-  script prints `skip pack@sys (fresh)` for anything whose stamp is
-  newer than its recipe, its system file, and its system dir. Touch a
-  recipe or delete a stamp to force a rebuild of just that package.
-- `./nest/tmp/` — scratch space (`WORK`/`OUT` stage dirs, one pair per
-  package, cleaned via `trap` even on failure). Safe to delete any time
-  nothing is building.
-
-Downstream use pattern: after `sh build.sh`, export the prefix and build
-your own code against it — headers, static libs, `.pc` files, and tools
-(`bin/python3`, `bin/meson`-style wrappers where packages ship them)
-are all under `./nest/<sys>/`.
-
-## CI example
-
-`.github/workflows/build-deps.yml` (or any CI with the same steps):
+In a CI config that's two lines:
 
 ```yaml
-name: deps
-on: [push]
-jobs:
-  android-deps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Clone the packages tree
-        run: git clone --depth=1 https://github.com/lunardoesdev/retrolunar-packages
-      - name: Install host tools
-        run: sudo apt-get update && sudo apt-get install -y
-          meson ninja-build curl git pkg-config cmake autoconf make util-linux
-      - name: Install Android SDK + NDK
-        uses: android-actions/setup-android@v3
-      - name: Build retrolunar
-        run: meson setup builddir && ninja -C builddir retrolunar
-      - name: Generate + run dependency script
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-        run: |
-          ./builddir/retrolunar generate -o build.sh -x \
-            --nest ./nest --packages ./retrolunar-packages \
-            'python@aarch64-android24'
-      - name: Check artifacts
-        run: |
-          test -x nest/aarch64-android24/bin/python3
-          PKG_CONFIG_LIBDIR=$PWD/nest/aarch64-android24/lib/pkgconfig \
-            pkg-config --modversion readline
-      - uses: actions/upload-artifact@v4
-        with:
-          name: aarch64-android24-prefix
-          path: nest/aarch64-android24
-          # Consumers download this artifact and use it as their PREFIX:
-          # headers in include/, libs in lib/, tools in bin/.
+cache:
+  paths: [nest/source]
 ```
 
-Notes for CI:
+### See what changed before you rebuild
 
-- Cache `./nest/source` (tarballs + git clones) between runs — it makes
-  rebuilds incremental; the freshness stamps skip everything already
-  built. Do **not** cache `./nest/tmp`.
-- With `generate -o build.sh -x` the script is kept for the logs and
-  re-runs. Drop `-x` if you would rather gate it yourself with
-  `sh -n build.sh` — that rejects a broken generated script before the
-  hour-long build starts.
-- `ANDROID_HOME` must point at an SDK containing an NDK; the system
-  `setup` picks the newest `ndk/*` automatically.
-- After the run, the `aarch64-android24` artifact dir **is** the SDK for
-  your app jobs: unpack it, set `PREFIX`, `PKG_CONFIG_LIBDIR`, `CC`,
-  and link away. Nothing else from the repo is needed at consumption
-  time — the generated script already ran.
+```sh
+#!/bin/sh
+set -eu
+SYS=aarch64-android24
 
-## Packages and systems
+retrolunar generate -o build.sh --nest ./nest "python@$SYS"
+sh -n build.sh                       # catch a broken script early
+diff -u previous-build.sh build.sh || echo "recipe set changed"
+sh build.sh
+cp build.sh previous-build.sh
+```
 
-See [AGENTS.md](AGENTS.md) for the full guide: `require("pack")` vs
-`require("pack@sys")` (including ordered `recipe_fallbacks`), writing
-`source.lua` (fetch-only) and `generic.lua` (build) recipes, and writing
-`system({ ... })` environments (toolchain, search paths, build-system
-defaults), recipe hygiene rules (no `sed`/patches/`/dev/null`/parallel
-make), and the known platform walls (API 21 vs 24+, X11-only or NDK-removed APIs).
+### Per-API-level Android prefixes
+
+```sh
+#!/bin/sh
+set -eu
+NEST="$PWD/nest"
+export ANDROID_HOME="${ANDROID_HOME:?set ANDROID_HOME}"
+
+for level in 21 24 35; do
+  echo "=== android$level ==="
+  retrolunar deps "pngprobe@aarch64-android$level" || continue
+  retrolunar generate --nest "$NEST" -o "build-$level.sh" -x \
+    "pngprobe@aarch64-android$level"
+done
+```
+
+Not every package builds on every API level, so `deps` first: it tells
+you whether the recipe chain even resolves before you spend an hour
+finding out.
+
+### Just look at what you'd get
+
+```sh
+# what does python drag in, and for which systems?
+retrolunar deps 'python@aarch64-android24'
+
+# is there anything for this name at all?
+retrolunar search ncurses
+
+# write it out, look at it, decide
+retrolunar generate -o review.sh 'python@aarch64-android24'
+less review.sh
+```
+
+## Notes
+
+- The generated script takes a `flock` on the nest, so two runs against
+  the same nest can't overlap. Different nests run happily side by side.
+- Recipes never run target binaries. Nothing is emulated. If a package
+  needs to run its own freshly built tool to finish configuring, that
+  package does not build here.
+- `deps` and `search` don't need a nest and don't touch one.
