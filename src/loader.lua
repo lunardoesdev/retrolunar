@@ -145,24 +145,36 @@ do
     local sys = sys_stack[#sys_stack]
     if sys == nil then sys = current_sys() end
     t.sys = sys
+    -- Canonical key and name first: the unknown-system error below names
+    -- the package that asked for it, which needs both.
+    local key = key_stack[#key_stack] or (sys .. '@' .. (f or '?'))
+    local keypack = key:match('^([^@]+)@')
+    if t.name == nil and keypack ~= nil and not keypack:find('/') then
+      t.name = keypack
+    end
     local sysmod = sys .. '@generic'
     local st = _loaded[sysmod]
     local in_system = false
     for i = 1, #sys_stack do
       if sys_stack[i] == 'generic' then in_system = true break end
     end
-    if st == nil and sys ~= 'generic' and not in_system then
+    -- 'source' is a built-in pseudo-system: it stages sources and never
+    -- compiles, so it has no recipe_fallbacks, no toolchain and no
+    -- generic.lua of its own. Anything else must exist: swallowing a
+    -- load failure here produced a recipe with no toolchain at all, which
+    -- looked fine until it was built — the emitted script had no setup
+    -- fragment to run, and a typo'd system name was accepted silently.
+    if st == nil and sys ~= 'generic' and sys ~= 'source' and not in_system then
       local ok, res = pcall(require, sysmod)
-      if ok then st = res end
+      if not ok then
+        error("system '" .. sys .. "' not found (needed by '" ..
+              tostring(t.name or f or key) .. "'): " .. tostring(res), 2)
+      end
+      st = res
     end
     if type(st) == 'table' then t.system = st end
     -- Enqueue once per canonical key. Requires run before recipe(), so
     -- deps land first and queue order is already topological.
-    local key = key_stack[#key_stack] or (sys .. '@' .. (f or '?'))
-    local keypack = key:match('^([^@]+)@')
-    if t.name == nil and keypack ~= nil and not keypack:find('/') then
-      t.name = keypack
-    end
     if queued[key] then error("recipe() duplicate entry for " .. key, 2) end
     queued[key] = true
     queue[#queue + 1] = t
