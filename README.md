@@ -7,6 +7,9 @@ system. Nothing clever at build time, no daemon, no dependency solver
 running in the background. You get a script, you can read it, you can edit
 it, you can throw it away and generate it again.
 
+This is package manager, for repository with packages and recipes visit
+https://github.com/lunardoesdev/retrolunar-packages
+
 ## Build it
 
 ```sh
